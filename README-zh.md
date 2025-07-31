@@ -144,7 +144,7 @@ Workers 服务提供：
 TG_BOT_TOKEN=your_telegram_bot_token  # 从 Telegram 上的 @BotFather 获取
 BOT_MODE=polling  # 使用轮询模式 - 无需公网 IP 或域名
 CLAUDE_CODE_PATH=claude
-WORK_DIR=/tmp/tg-claudecode
+WORK_DIR=/tmp/tg-claudecode  # GitHub 项目克隆的目录
 MCP_PORT=3002
 ```
 

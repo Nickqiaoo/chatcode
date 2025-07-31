@@ -146,7 +146,7 @@ Create a `.env` file with the following environment variables:
 TG_BOT_TOKEN=your_telegram_bot_token  # Get this from @BotFather on Telegram
 BOT_MODE=polling  # Uses polling mode - no public IP or domain needed
 CLAUDE_CODE_PATH=claude
-WORK_DIR=/tmp/tg-claudecode
+WORK_DIR=/tmp/tg-claudecode  # Directory where GitHub projects will be cloned here
 MCP_PORT=3002
 ```
 
