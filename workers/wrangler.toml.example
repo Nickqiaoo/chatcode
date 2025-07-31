@@ -1,0 +1,12 @@
+name = "chatcode-bot"
+main = "src/index.ts"
+compatibility_date = "2025-07-25"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public/"
+binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "CHATCODE"
+id = your_id

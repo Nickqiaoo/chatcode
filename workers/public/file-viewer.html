@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>File Viewer</title>
+    
+    <!-- Prism.js styles -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" media="(prefers-color-scheme: light)" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" media="(prefers-color-scheme: dark)" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+    
+    <!-- Telegram Web-App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            line-height: 1.6;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #0d1117;
+                color: #e6edf3;
+            }
+        }
+        
+        .container {
+            max-width: 100%;
+            padding: 16px;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 8px;
+            border: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .header {
+                background: #21262d;
+                border-color: #30363d;
+            }
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .file-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            font-size: 16px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        
+        .file-meta {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            background: var(--tg-theme-button-color, #007aff);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+        
+        .btn:hover {
+            opacity: 0.8;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-copy {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-download {
+            background: #007bff;
+            color: white;
+        }
+        
+        .code-block {
+            background: var(--tg-theme-bg-color, #ffffff);
+            border: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+            border-radius: 8px;
+            overflow: hidden;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .code-block {
+                background: #0d1117;
+                border-color: #30363d;
+            }
+            
+            /* Override line numbers styling for dark mode */
+            .line-numbers .line-numbers-rows {
+                border-right-color: #30363d;
+            }
+            
+            .line-numbers-rows > span:before {
+                color: #6e7681;
+            }
+        }
+        
+        
+        pre {
+            margin: 0;
+            padding: 16px;
+            overflow-x: auto;
+        }
+        
+        /* Override Prism.js font size */
+        pre[class*="language-"], 
+        code[class*="language-"] {
+            font-size: 10px !important;
+            line-height: 1.4 !important;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+        
+        .error {
+            color: #dc3545;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        
+        .stats {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999999);
+            text-align: center;
+            margin-top: 16px;
+            padding: 8px;
+        }
+        
+        .success-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .success-indicator.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="file-info">
+                <span class="file-icon" id="fileIcon">📄</span>
+                <div>
+                    <div class="file-name" id="fileName">Loading...</div>
+                    <div class="file-meta" id="fileMeta"></div>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-copy" onclick="copyCode()" id="copyBtn">📋 Copy</button>
+                <button class="btn btn-download" onclick="downloadFile()" id="downloadBtn">⬇️ Download</button>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div>⏳ Loading file...</div>
+        </div>
+        <div id="error" class="error" style="display: none;">
+            <div>❌ Loading failed</div>
+        </div>
+        <pre class="line-numbers code-block" id="codeBlock" style="display: none;"><code id="codeContent"></code></pre>
+        
+        <div class="stats" id="stats" style="display: none;"></div>
+    </div>
+    
+    <div class="success-indicator" id="successIndicator">✅ Copied to clipboard</div>
+
+    <!-- Prism.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    
+    <script>
+        let fileData = null;
+        
+        
+        // Get file extension
+        function getFileExtension(filename) {
+            const parts = filename.toLowerCase().split('.');
+            return parts.length > 1 ? parts.pop() : '';
+        }
+        
+        
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Format line count
+        function formatLineCount(content) {
+            return content.split('\n').length;
+        }
+        
+        async function loadFile() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileId = urlParams.get('id');
+            
+            if (!fileId) {
+                showError('Missing file ID');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/file/${fileId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                fileData = await response.json();
+                displayFile(fileData);
+            } catch (error) {
+                showError(`Loading failed: ${error.message}`);
+            }
+        }
+        
+        function displayFile(data) {
+            const { filename, content, language } = data;
+            
+            // Update file information
+            document.getElementById('fileName').textContent = filename;
+            document.getElementById('fileIcon').style.display = 'none';
+            document.title = `${filename} - File Viewer`;
+            
+            // Display file meta information
+            const fileSize = formatFileSize(new Blob([content]).size);
+            const lineCount = formatLineCount(content);
+            document.getElementById('fileMeta').textContent = `${fileSize} • ${lineCount} lines`;
+            
+            // Display code
+            const codeElement = document.getElementById('codeContent');
+            // Process escaped newlines
+            const processedContent = content.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+            codeElement.textContent = processedContent;
+            
+            // Set language class name
+            if (language) {
+                codeElement.className = `language-${language}`;
+            } else {
+                // Try to auto-detect based on file extension
+                const ext = getFileExtension(filename);
+                if (ext) {
+                    codeElement.className = `language-${ext}`;
+                }
+            }
+            
+            // Prism.js will automatically highlight and add line numbers
+            Prism.highlightElement(codeElement);
+            
+            // Display statistics
+            const statsElement = document.getElementById('stats');
+            statsElement.textContent = `${lineCount} lines, ${fileSize}`;
+            statsElement.style.display = 'block';
+            
+            // Show content, hide loading state  
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('codeBlock').style.display = 'block';
+        }
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').innerHTML = `<div>❌ ${message}</div>`;
+        }
+        
+        async function copyCode() {
+            if (!fileData) return;
+            
+            try {
+                await navigator.clipboard.writeText(fileData.content);
+                showSuccessIndicator();
+            } catch (error) {
+                // Fallback: create temporary textarea
+                const textarea = document.createElement('textarea');
+                textarea.value = fileData.content;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showSuccessIndicator();
+                } catch (e) {
+                    alert('Copy failed, please manually select text to copy');
+                }
+                document.body.removeChild(textarea);
+            }
+        }
+        
+        function showSuccessIndicator() {
+            const indicator = document.getElementById('successIndicator');
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 2000);
+        }
+        
+        function downloadFile() {
+            if (!fileData) return;
+            
+            try {
+                const blob = new Blob([fileData.content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileData.filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Download failed');
+            }
+        }
+        
+        // Load file when page loads
+        document.addEventListener('DOMContentLoaded', loadFile);
+        
+        // Telegram WebApp integration
+        if (window.Telegram?.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            tg.disableVerticalSwipes();
+            
+            // Set theme colors
+            if (tg.themeParams) {
+                const root = document.documentElement;
+                Object.entries(tg.themeParams).forEach(([key, value]) => {
+                    root.style.setProperty(`--tg-${key.replace(/_/g, '-')}`, value);
+                });
+            }
+        }
+        
+        // Disable double-tap zoom
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>

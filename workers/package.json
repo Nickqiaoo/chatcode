@@ -1,0 +1,17 @@
+{
+  "name": "diff-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --remote --env production",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "nanoid": "^5.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "wrangler": "^4.26.0"
+  }
+}

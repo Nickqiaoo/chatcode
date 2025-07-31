@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css"
+    media="screen and (prefers-color-scheme: light)" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css"
+    media="screen and (prefers-color-scheme: dark)" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+
+  <!-- Telegram Web-App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: monospace
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">Loading…</div>
+
+  <script type="module">
+    import { inflateRaw } from 'https://cdn.jsdelivr.net/npm/pako@2.1.0/+esm';
+
+    const qs = new URLSearchParams(location.search);
+    const id = qs.get('id') || Telegram.WebApp.initDataUnsafe?.start_param;
+    if (!id) { document.body.textContent = 'Missing id'; throw new Error('no id'); }
+
+    const patch = await fetch(`/api/diff/${id}`).then(r => r.text());
+
+    const target = document.getElementById('app');
+    const ui = new Diff2HtmlUI(target, patch, {
+      outputFormat: 'line-by-line',
+      drawFileList: true,
+      highlight: true,
+      matching: 'lines',
+      colorScheme: 'auto',
+    });
+    ui.draw();
+    ui.highlightCode();
+
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    Telegram.WebApp.disableVerticalSwipes();
+  </script>
+</body>
+
+</html>
