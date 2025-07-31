@@ -2,6 +2,10 @@
 
 [🇨🇳 中文文档](README-zh.md)
 
+## Demo Video
+
+[![Demo Video](https://img.youtube.com/vi/rhsV6_z9G9c/0.jpg)](https://www.youtube.com/watch?v=rhsV6_z9G9c)
+
 A powerful Telegram bot that integrates with Claude Code to provide AI-powered coding assistance directly through Telegram. **Uses telegram polling mode - runs on any computer with internet connection, no public IP or domain required.**
 
 This bot allows users to interact with Claude's coding capabilities in a conversational interface with features like project management, file browsing, and comprehensive permission controls.
