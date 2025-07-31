@@ -1,5 +1,7 @@
 # Telegram Claude Code Bot
 
+[🇨🇳 中文文档](README-zh.md)
+
 A powerful Telegram bot that integrates with Claude Code to provide AI-powered coding assistance directly through Telegram. **Uses telegram polling mode - runs on any computer with internet connection, no public IP or domain required.**
 
 This bot allows users to interact with Claude's coding capabilities in a conversational interface with features like project management, file browsing, and comprehensive permission controls.
@@ -164,6 +166,31 @@ SECURITY_SECRET_TOKEN=your_secret_token
 WORKERS_ENABLED=false
 WORKERS_ENDPOINT=your_workers_endpoint
 WORKERS_API_KEY=your_workers_api_key
+```
+
+## Authentication Configuration
+
+By default, anyone who finds your bot can use it. To protect your Claude Code access, you can enable authentication.
+
+### Enable Authentication
+
+Add these environment variables to your `.env`:
+
+```env
+SECURITY_SECRET_REQUIRED=true
+SECURITY_SECRET_TOKEN=your_secret_password_here
+```
+
+### Usage
+
+When authentication is enabled:
+1. New users must send the secret token to the bot before they can use it
+2. Use `/auth` command to check authentication status. send `/auth token`
+3. Authenticated users stay logged in until the session expires
+
+Generate a secure token:
+```bash
+openssl rand -hex 16
 ```
 
 ## Usage
