@@ -104,7 +104,6 @@ export class TelegramHandler {
     this.bot.command('help', (ctx) => this.commandHandler.handleHelp(ctx));
     this.bot.command('status', (ctx) => this.commandHandler.handleStatus(ctx));
     this.bot.command('ls', (ctx) => this.fileBrowserHandler.handleLsCommand(ctx));
-    this.bot.command('test', (ctx) => this.commandHandler.handleTest(ctx));
     this.bot.command('auth', (ctx) => this.commandHandler.handleAuth(ctx));
 
     this.bot.command('abort', (ctx) => this.commandHandler.handleAbort(ctx));

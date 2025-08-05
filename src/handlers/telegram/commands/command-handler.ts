@@ -107,6 +107,9 @@ export class CommandHandler {
       const project = await this.storage.getProject(user.activeProject, chatId);
       const projectName = project?.name || 'Unknown Project';
       
+      // Clean up active streams before ending session
+      this.claudeSDK.abortQuery(chatId);
+      
       user.endSession();
       user.clearActiveProject();
       user.setState(UserState.Idle);
@@ -228,12 +231,6 @@ export class CommandHandler {
     } catch (error) {
       await ctx.reply(this.formatter.formatError('Failed to abort query. Please try again.'), { parse_mode: 'MarkdownV2' });
     }
-  }
-
-  async handleTest(ctx: Context): Promise<void> {
-    if (!ctx.chat) return;
-
-    await ctx.reply('hello world');
   }
 
   async handleAuth(ctx: Context): Promise<void> {
