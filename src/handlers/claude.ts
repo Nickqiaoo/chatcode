@@ -2,11 +2,12 @@ import { query, type Options, AbortError, type SDKUserMessage } from '@anthropic
 import { IStorage } from '../storage/interface';
 import { TargetTool } from '../models/types';
 import { PermissionManager } from './permission-manager';
+import { StreamManager } from '../utils/stream-manager';
 
 export class ClaudeManager {
   private storage: IStorage;
   private permissionManager: PermissionManager;
-  private abortControllers: Map<number, AbortController> = new Map();
+  private streamManager = new StreamManager();
   private onClaudeResponse: (userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => Promise<void>;
   private onClaudeError: (userId: string, error: string) => void;
 
@@ -24,16 +25,13 @@ export class ClaudeManager {
     this.onClaudeError = callbacks.onClaudeError;
   }
 
-
-  async sendMessageBatched(chatId: number, prompt: string): Promise<void> {
-    // Construct options for batched messages
+  async addMessageToStream(chatId: number, prompt: string): Promise<void> {
     const session = await this.storage.getUserSession(chatId);
     if (!session) {
       console.error(`[ClaudeManager] No session found for chatId: ${chatId}`);
       return;
     }
 
-    // Create AsyncIterable for user message
     const userMessage: SDKUserMessage = {
       type: 'user',
       message: {
@@ -46,43 +44,16 @@ export class ClaudeManager {
         ]
       },
       parent_tool_use_id: null,
-      session_id: '' // Let SDK manage session_id itself
+      session_id: ''
     };
 
-    // Create a new controller for each query
-    const abortController = new AbortController();
-    this.abortControllers.set(chatId, abortController);
+    // If no active query, start a new one
+    if (!this.streamManager.isStreamActive(chatId)) {
+      await this.startNewQuery(chatId, session);
+    }
 
-    // Create AsyncIterable - Important: don't let it end, otherwise streamToStdin will close stdin
-    const promptIterable = (async function* () {
-      yield userMessage;
-
-      // Keep stream open, wait for abort signal
-      while (!abortController.signal.aborted) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    })();
-
-    const options: Options = {
-      cwd: session.projectPath,
-      ...(session.sessionId ? { resume: session.sessionId } : {}),
-      abortController: abortController,
-      canUseTool: async (toolName: string, input: Record<string, unknown>) => {
-        try {
-          // Inject chatId into input for PermissionManager use
-          const inputWithChatId = { ...input, __chatId: chatId };
-          const result = await this.permissionManager.canUseTool(toolName, inputWithChatId);
-          return result;
-        } catch (error) {
-          return {
-            behavior: 'deny',
-            message: `Permission check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-          };
-        }
-      },
-    };
-
-    await this.sendMessage(chatId, promptIterable, options);
+    // Add message to existing stream
+    this.streamManager.addMessage(chatId, userMessage);
   }
 
   async sendMessage(chatId: number, prompt: AsyncIterable<SDKUserMessage>, options: Options): Promise<void> {
@@ -117,8 +88,6 @@ export class ClaudeManager {
       this.onClaudeError?.(chatId.toString(), error instanceof Error ? error.message : 'Unknown error');
       throw error;
     } finally {
-      this.abortControllers.delete(chatId);
-
       // Signal completion with null message to indicate completion
       this.onClaudeResponse(chatId.toString(), null, undefined, undefined);
     }
@@ -127,21 +96,15 @@ export class ClaudeManager {
   }
 
   async abortQuery(chatId: number): Promise<boolean> {
-    const controller = this.abortControllers.get(chatId);
-    if (controller) {
-      // Abort the controller for this chatId
-      controller.abort();
-      this.abortControllers.delete(chatId);
-      return true;
-    }
-    return false;
+    return this.streamManager.abortStream(chatId);
   }
 
   isQueryRunning(chatId: number): boolean {
-    return this.abortControllers.has(chatId);
+    return this.streamManager.isStreamActive(chatId);
   }
 
   async shutdown(): Promise<void> {
+    this.streamManager.shutdown();
     await this.storage.disconnect();
   }
 
@@ -182,6 +145,34 @@ export class ClaudeManager {
     }
 
     return undefined;
+  }
+
+  private async startNewQuery(chatId: number, session: any): Promise<void> {
+    const stream = this.streamManager.getOrCreateStream(chatId);
+    const controller = this.streamManager.getController(chatId)!;
+    
+    const options: Options = {
+      cwd: session.projectPath,
+      ...(session.sessionId ? { resume: session.sessionId } : {}),
+      abortController: controller,
+      permissionMode: session.permissionMode,
+      canUseTool: async (toolName: string, input: Record<string, unknown>) => {
+        try {
+          // Inject chatId into input for PermissionManager use
+          const inputWithChatId = { ...input, __chatId: chatId };
+          const result = await this.permissionManager.canUseTool(toolName, inputWithChatId);
+          return result;
+        } catch (error) {
+          return {
+            behavior: 'deny',
+            message: `Permission check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          };
+        }
+      },
+    };
+
+    // Start query
+    this.sendMessage(chatId, stream, options);
   }
 
 }

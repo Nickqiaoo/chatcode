@@ -6,7 +6,6 @@ import { MessageFormatter } from '../../../utils/formatter';
 import { MESSAGES } from '../../../constants/messages';
 import { KeyboardFactory } from '../keyboards/keyboard-factory';
 import { ClaudeManager } from '../../claude';
-import { MessageBatcher } from '../../../queue/message-batcher';
 import { AuthService } from '../../../services/auth-service';
 import { Config } from '../../../config/config';
 import { TelegramSender } from '../../../services/telegram-sender';
@@ -19,7 +18,6 @@ export class CommandHandler {
     private storage: IStorage,
     private formatter: MessageFormatter,
     private claudeSDK: ClaudeManager,
-    private messageBatcher: MessageBatcher,
     private config: Config,
     private bot: any
   ) {
@@ -199,6 +197,8 @@ export class CommandHandler {
     try {
       delete user.sessionId;
       await this.storage.saveUserSession(user);
+      await this.claudeSDK.abortQuery(chatId);
+
       await ctx.reply('✅ Session cleared. Your Claude Code session has been reset.');
     } catch (error) {
       await ctx.reply(this.formatter.formatError('Failed to clear session. Please try again.'), { parse_mode: 'MarkdownV2' });
@@ -219,7 +219,6 @@ export class CommandHandler {
 
     try {
       const success = await this.claudeSDK.abortQuery(chatId);
-      this.messageBatcher.clear(chatId);
 
       if (success) {
         await ctx.reply('🛑 Query aborted successfully. You can send a new message now.');
@@ -294,7 +293,6 @@ export class CommandHandler {
       let abortMessage = '';
       if (this.claudeSDK.isQueryRunning(chatId)) {
         const abortSuccess = await this.claudeSDK.abortQuery(chatId);
-        this.messageBatcher.clear(chatId);
         
         if (abortSuccess) {
           abortMessage = '🛑 Current Claude has been stopped.\n';
@@ -320,15 +318,13 @@ export class CommandHandler {
       
       // If we aborted a query, send a continue message to restart Claude session
       if (abortMessage) {
-        this.messageBatcher.addMessage(chatId, 'continue');
+        this.claudeSDK.addMessageToStream(chatId, 'continue');
       }
     } catch (error) {
       await ctx.reply(this.formatter.formatError('Failed to change permission mode. Please try again.'), { parse_mode: 'MarkdownV2' });
       console.error('Error changing permission mode:', error);
     }
   }
-
-  
 
   private async getOrCreateUser(chatId: number): Promise<UserSessionModel> {
     let user = await this.storage.getUserSession(chatId);

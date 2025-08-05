@@ -5,7 +5,7 @@ import { IStorage } from '../../../storage/interface';
 import { GitHubManager } from '../../github';
 import { MessageFormatter } from '../../../utils/formatter';
 import { MESSAGES } from '../../../constants/messages';
-import { MessageBatcher } from '../../../queue/message-batcher';
+import { ClaudeManager } from '../../claude';
 import { ProjectHandler } from '../project/project-handler';
 import { TelegramSender } from '../../../services/telegram-sender';
 
@@ -16,7 +16,7 @@ export class MessageHandler {
     private storage: IStorage,
     private github: GitHubManager,
     private formatter: MessageFormatter,
-    private messageBatcher: MessageBatcher,
+    private claudeSDK: ClaudeManager,
     private projectHandler: ProjectHandler,
     private bot: Telegraf
   ) {
@@ -56,7 +56,7 @@ export class MessageHandler {
   async handleSessionInput(ctx: Context, user: UserSessionModel, text: string): Promise<void> {
     try {
       await ctx.reply('Processing...');
-      this.messageBatcher.addMessage(user.chatId, text);
+      await this.claudeSDK.addMessageToStream(user.chatId, text);
     } catch (error) {
       await ctx.reply(this.formatter.formatError(MESSAGES.ERRORS.SEND_INPUT_FAILED(error instanceof Error ? error.message : 'Unknown error')), { parse_mode: 'MarkdownV2' });
     }

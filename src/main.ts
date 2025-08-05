@@ -41,7 +41,7 @@ async function main(): Promise<void> {
     let telegramHandler: TelegramHandler;
 
     // Initialize SDK manager with callback architecture
-    const claudeSDK = new ClaudeManager(storage, config, permissionManager, {
+    const claudeSDK = new ClaudeManager(storage, permissionManager, {
       onClaudeResponse: async (userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => {
         await telegramHandler.handleClaudeResponse(userId, message, toolInfo, parentToolUseId);
       },

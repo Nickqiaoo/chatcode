@@ -73,6 +73,9 @@ export class PermissionManager {
     });
 
     try {
+      // Wait 3 seconds before sending permission request
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       // Send Telegram permission request
       await this.sendPermissionRequest(chatId, toolName, requestId);
 
