@@ -8,8 +8,6 @@ import { MESSAGES } from '../../../constants/messages';
 import { MessageBatcher } from '../../../queue/message-batcher';
 import { ProjectHandler } from '../project/project-handler';
 import { TelegramSender } from '../../../services/telegram-sender';
-import { parse } from 'path';
-import { parse_mode } from 'telegram-format/dist/html';
 
 export class MessageHandler {
   private telegramSender: TelegramSender;
@@ -65,19 +63,9 @@ export class MessageHandler {
   }
 
   async handleRegularMessage(chatId: number, message: any, permissionMode?: PermissionMode): Promise<void> {
-    await this.processLegacyToolMapping(chatId, message);
     await this.sendFormattedMessage(chatId, message, permissionMode);
   }
 
-  private async processLegacyToolMapping(chatId: number, message: any): Promise<void> {
-    if (message.type !== 'assistant' || !message.message.content) return;
-
-    for (const content of message.message.content) {
-      if (content.type === 'tool_use' && content.id) {
-        await this.storage.storeToolUseMapping(content.id, chatId, content.name || undefined, content.input);
-      }
-    }
-  }
 
   async sendFormattedMessage(chatId: number, message: any, permissionMode?: PermissionMode): Promise<void> {
     try {

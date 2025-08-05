@@ -19,15 +19,15 @@ This bot allows users to interact with Claude's coding capabilities in a convers
 - **Session Management**: Persistent user sessions with Redis or memory storage
 - **Tool Handling**: Advanced tool use detection and management
 - **Message Batching**: Efficient message processing and delivery
-- **MCP Server**: Model Context Protocol server for permission control
+- **Permission Control**: Advanced permission system for secure tool usage
 - **Cloudflare Workers**: Optional Workers integration for diff and file view
 
 ## Mobile-Optimized Experience for Telegram
 
 This bot is specifically designed and optimized for Telegram usage scenarios, providing an excellent mobile experience through several key innovations:
 
-### 1. **Permission MCP for Natural Control**
-Implements a Model Context Protocol (MCP) server that provides natural permission control workflow. Users can easily approve or deny tool operations through intuitive inline keyboards, making permission management seamless on mobile devices.
+### 1. **Natural Permission Control**
+Provides natural permission control workflow through an integrated permission system. Users can easily approve or deny tool operations through intuitive inline keyboards, making permission management seamless on mobile devices.
 
 ### 2. **Visual Diff Display for Edits**
 All code editing operations display comprehensive diff views, allowing users to review changes before approval. This visual feedback is essential for mobile users who need clear context about what changes are being made to their code.
@@ -151,7 +151,6 @@ TG_BOT_TOKEN=your_telegram_bot_token  # Get this from @BotFather on Telegram
 BOT_MODE=polling  # Uses polling mode - no public IP or domain needed
 CLAUDE_CODE_PATH=claude
 WORK_DIR=/tmp/tg-claudecode  # Directory where GitHub projects will be cloned here
-MCP_PORT=3002
 ```
 
 ### Optional Configuration
@@ -236,7 +235,7 @@ The bot is built with a modular architecture consisting of:
 - **Claude Manager** (`src/handlers/claude.ts`): Claude Code SDK integration
 - **Telegram Handler** (`src/handlers/telegram.ts`): Telegram bot logic coordination
 - **Storage Layer**: Redis or memory-based session storage
-- **MCP Server**: Local server for Model Context Protocol
+- **Permission System**: Integrated permission control for tool usage
 - **Workers Support**: Optional Cloudflare Workers integration
 
 ### Message Flow Architecture
@@ -247,21 +246,21 @@ sequenceDiagram
     participant TG as Telegram
     participant Bot as Telegram Bot
     participant Claude as Claude Code SDK
-    participant MCP as MCP Server
-    
+    participant PM as Permission Manager
+
     User->>TG: Send message
     TG->>Bot: Poll/receive message
     Bot->>Claude: Process message via SDK
-    
+
     alt Tool requires permission
-        Claude->>MCP: Request permission
-        MCP->>TG: Send permission request to user
+        Claude->>PM: Request permission
+        PM->>TG: Send permission request to user
         TG->>User: Show permission dialog
         User->>TG: Approve/Deny
-        TG->>MCP: User response
-        MCP->>Claude: Return permission result
+        TG->>PM: User response
+        PM->>Claude: Return permission result
     end
-    
+
     Claude->>Bot: Return response
     Bot->>TG: Send response
     TG->>User: Display message
@@ -273,10 +272,10 @@ The architecture follows this flow:
 2. **Message Reception**: Bot polls Telegram API and receives the message
 3. **Claude Processing**: Message is forwarded to Claude Code SDK for processing
 4. **Permission Check**: If Claude requires tool use permissions:
-   - Claude Code SDK requests permission through MCP server
-   - MCP server sends permission request to user via Telegram
+   - Claude Code SDK calls the permission manager's canUseTool function
+   - Permission manager sends permission request to user via Telegram
    - User approves or denies the request through inline keyboard
-   - MCP server returns the permission result to Claude Code SDK
+   - Permission manager returns the permission result to Claude Code SDK
 5. **Response Generation**: Claude processes the request and generates response
 6. **Message Delivery**: Bot sends the formatted response back to user via Telegram
 
@@ -295,7 +294,7 @@ src/
 │   ├── directory.ts # Directory management
 │   └── telegram/    # Telegram-specific handlers
 ├── models/          # Data models and types
-├── mcp/            # MCP server implementation
+
 ├── queue/          # Message batching
 ├── server/         # Express server for webhooks
 ├── services/       # Business logic services

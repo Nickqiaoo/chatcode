@@ -1,12 +1,10 @@
 import { UserSessionModel } from '../models/user-session';
 import { Project } from '../models/project';
 import { IStorage } from './interface';
-import { createHash } from 'crypto';
 
 export class MemoryStorage implements IStorage {
   private userSessions: Map<number, UserSessionModel> = new Map();
   private userProjects: Map<number, Map<string, Project>> = new Map();
-  private toolUseMappings: Map<string, number> = new Map();
   private toolUseStorage: Map<string, {
     name: string;
     messageId: number;
@@ -22,7 +20,6 @@ export class MemoryStorage implements IStorage {
   async disconnect(): Promise<void> {
     this.userSessions.clear();
     this.userProjects.clear();
-    this.toolUseMappings.clear();
     this.toolUseStorage.clear();
     console.log('Memory storage disconnected');
   }
@@ -54,30 +51,6 @@ export class MemoryStorage implements IStorage {
     await this.saveUserSession(userSession);
   }
 
-  private createInputHash(input: object): string {
-    const inputStr = JSON.stringify(input, Object.keys(input).sort());
-    return createHash('sha256').update(inputStr).digest('hex').substring(0, 12);
-  }
-
-  private generateToolUseKey(toolName: string, input: object, toolUseId: string): string {
-    const inputHash = this.createInputHash(input);
-    return `tool_use:${toolName}:${inputHash}:${toolUseId}`;
-  }
-
-  async storeToolUseMapping(toolUseId: string, chatId: number, toolName: string, input: object): Promise<void> {
-    const key = this.generateToolUseKey(toolName, input, toolUseId);
-    this.toolUseMappings.set(key, chatId);
-
-    // Auto-cleanup after 15 minutes
-    setTimeout(() => {
-      this.toolUseMappings.delete(key);
-    }, 15 * 60 * 1000);
-  }
-
-  async getToolUseMapping(toolUseId: string, toolName: string, input: object): Promise<number | null> {
-    const key = this.generateToolUseKey(toolName, input, toolUseId);
-    return this.toolUseMappings.get(key) || null;
-  }
 
   private getToolUseKey(sessionId: string, toolId: string): string {
     return `tool_use_storage:${sessionId}_${toolId}`;

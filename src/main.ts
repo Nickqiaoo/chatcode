@@ -8,7 +8,7 @@ import { ClaudeManager } from './handlers/claude';
 import { TelegramHandler } from './handlers/telegram';
 import { ExpressServer } from './server/express';
 import { MessageFormatter } from './utils/formatter';
-import { MCPServer } from './mcp/server';
+import { PermissionManager } from './handlers/permission-manager';
 
 async function main(): Promise<void> {
   try {
@@ -33,11 +33,15 @@ async function main(): Promise<void> {
     const github = new GitHubManager(config.workDir.workDir);
     const directory = new DirectoryManager();
 
+    // Initialize Permission Manager
+    const permissionManager = new PermissionManager(bot);
+    console.log('Permission manager initialized');
+
     // First create a placeholder handler that we'll set up later
     let telegramHandler: TelegramHandler;
 
     // Initialize SDK manager with callback architecture
-    const claudeSDK = new ClaudeManager(storage, config, {
+    const claudeSDK = new ClaudeManager(storage, config, permissionManager, {
       onClaudeResponse: async (userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => {
         await telegramHandler.handleClaudeResponse(userId, message, toolInfo, parentToolUseId);
       },
@@ -55,14 +59,11 @@ async function main(): Promise<void> {
       claudeSDK,
       storage,
       messageFormatter,
-      config
+      config,
+      permissionManager
     );
 
     console.log('Telegram handler initialized with callback architecture');
-
-    // Initialize MCP server with its own Express instance (localhost only)
-    const mcpServer = new MCPServer(bot, storage, config.mcp.port);
-    await mcpServer.start();
     
     if (config.telegram.mode === 'webhook') {
       if (!config.webhook) {
@@ -88,8 +89,8 @@ async function main(): Promise<void> {
     }
 
     // Handle graceful shutdown (register after successful startup)
-    process.once('SIGINT', () => gracefulShutdown(bot, claudeSDK, mcpServer, storage));
-    process.once('SIGTERM', () => gracefulShutdown(bot, claudeSDK, mcpServer, storage));
+    process.once('SIGINT', () => gracefulShutdown(bot, claudeSDK, storage));
+    process.once('SIGTERM', () => gracefulShutdown(bot, claudeSDK, storage));
   } catch (error) {
     console.error('Failed to start application:', error);
     process.exit(1);
@@ -98,24 +99,19 @@ async function main(): Promise<void> {
 
 
 async function gracefulShutdown(
-  bot: Telegraf, 
-  claudeSDK: ClaudeManager, 
-  mcpServer: MCPServer,
+  bot: Telegraf,
+  claudeSDK: ClaudeManager,
   storage: IStorage
 ): Promise<void> {
   console.log('Received shutdown signal, shutting down gracefully...');
-  
+
   try {
     // Stop the bot
     bot.stop('SIGINT');
-    
+
     // Shutdown SDK manager
     await claudeSDK.shutdown();
-    
-    // Shutdown MCP server
-    await mcpServer.stop();
-    console.log('MCP server shutdown completed');
-    
+
     // Disconnect storage
     await storage.disconnect();
     console.log('Storage disconnected');

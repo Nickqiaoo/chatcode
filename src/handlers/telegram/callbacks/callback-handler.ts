@@ -4,7 +4,7 @@ import { MessageFormatter } from '../../../utils/formatter';
 import { ProjectHandler } from '../project/project-handler';
 import { FileBrowserHandler } from '../file-browser/file-browser-handler';
 import { UserState } from '../../../models/types';
-import { Config } from '../../../config/config';
+import { PermissionManager } from '../../permission-manager';
 
 export class CallbackHandler {
   constructor(
@@ -13,7 +13,7 @@ export class CallbackHandler {
     private storage: IStorage,
     private fileBrowserHandler: FileBrowserHandler,
     private bot: Telegraf,
-    private config: Config
+    private permissionManager: PermissionManager
   ) {}
 
   async handleCallback(ctx: Context): Promise<void> {
@@ -41,32 +41,11 @@ export class CallbackHandler {
 
   private async handleMCPApprovalCallback(data: string, chatId: number, messageId?: number): Promise<void> {
     try {
-      // Call the HTTP API instead of MCP client
-      const response = await fetch(`http://localhost:${this.config.mcp.port}/api/approve-callback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chat_id: chatId,
-          approved: data
-        })
-      });
+      await this.permissionManager.handleApprovalCallback(chatId, data);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json() as { success: boolean; error?: string; result?: any };
-
-      if (!result.success) {
-        console.error('Approval callback error:', result.error);
-        await this.bot.telegram.sendMessage(chatId, this.formatter.formatError('Error handling permission response'), { parse_mode: 'MarkdownV2' });
-      } else {
-        const isApproved = data.startsWith('approve_');
-        const message = isApproved ? '✅ Operation approved' : '❌ Operation denied';
-        await this.bot.telegram.sendMessage(chatId, message);
-      }
+      const isApproved = data.startsWith('approve_');
+      const message = isApproved ? '✅ Operation approved' : '❌ Operation denied';
+      await this.bot.telegram.sendMessage(chatId, message);
 
       if (messageId) {
         await this.bot.telegram.deleteMessage(chatId, messageId);

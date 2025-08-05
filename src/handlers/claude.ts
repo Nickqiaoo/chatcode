@@ -1,25 +1,25 @@
-import { query, type Options, AbortError } from '@anthropic-ai/claude-code';
+import { query, type Options, AbortError, type SDKUserMessage } from '@anthropic-ai/claude-code';
 import { IStorage } from '../storage/interface';
 import { TargetTool } from '../models/types';
-import { Config } from '../config/config';
+import { PermissionManager } from './permission-manager';
 
 export class ClaudeManager {
   private storage: IStorage;
-  private config: Config;
+  private permissionManager: PermissionManager;
   private abortControllers: Map<number, AbortController> = new Map();
   private onClaudeResponse: (userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => Promise<void>;
   private onClaudeError: (userId: string, error: string) => void;
 
   constructor(
     storage: IStorage,
-    config: Config,
+    permissionManager: PermissionManager,
     callbacks: {
-      onClaudeResponse:(userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => Promise<void>;
+      onClaudeResponse: (userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => Promise<void>;
       onClaudeError: (userId: string, error: string) => void;
     }
   ) {
     this.storage = storage;
-    this.config = config;
+    this.permissionManager = permissionManager;
     this.onClaudeResponse = callbacks.onClaudeResponse;
     this.onClaudeError = callbacks.onClaudeError;
   }
@@ -33,65 +33,94 @@ export class ClaudeManager {
       return;
     }
 
-    const options: Options = {
-      cwd: session.projectPath,
-      ...(session.sessionId ? { resume: session.sessionId } : {}),
-      mcpServers: {
-        'permission': {
-          type: 'http',
-          url: `http://localhost:${this.config.mcp.port}/mcp`
-        }
+    // Create AsyncIterable for user message
+    const userMessage: SDKUserMessage = {
+      type: 'user',
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
       },
-      permissionMode: session.permissionMode,
-      permissionPromptToolName: 'mcp__permission__approve',
-      allowedTools: ['mcp__permission__approve'],
+      parent_tool_use_id: null,
+      session_id: '' // Let SDK manage session_id itself
     };
-
-    await this.sendMessage(chatId, prompt, options);
-  }
-
-  async sendMessage(chatId: number, prompt: string, options: Options): Promise<void> {
-    const userSession = await this.storage.getUserSession(chatId);
-    if (!userSession) {
-      throw new Error('User session not found');
-    }
 
     // Create a new controller for each query
     const abortController = new AbortController();
     this.abortControllers.set(chatId, abortController);
-    options.abortController = abortController;
+
+    // Create AsyncIterable - Important: don't let it end, otherwise streamToStdin will close stdin
+    const promptIterable = (async function* () {
+      yield userMessage;
+
+      // Keep stream open, wait for abort signal
+      while (!abortController.signal.aborted) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    })();
+
+    const options: Options = {
+      cwd: session.projectPath,
+      ...(session.sessionId ? { resume: session.sessionId } : {}),
+      abortController: abortController,
+      canUseTool: async (toolName: string, input: Record<string, unknown>) => {
+        try {
+          // Inject chatId into input for PermissionManager use
+          const inputWithChatId = { ...input, __chatId: chatId };
+          const result = await this.permissionManager.canUseTool(toolName, inputWithChatId);
+          return result;
+        } catch (error) {
+          return {
+            behavior: 'deny',
+            message: `Permission check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          };
+        }
+      },
+    };
+
+    await this.sendMessage(chatId, promptIterable, options);
+  }
+
+  async sendMessage(chatId: number, prompt: AsyncIterable<SDKUserMessage>, options: Options): Promise<void> {
+    const userSession = await this.storage.getUserSession(chatId);
+    if (!userSession) {
+      throw new Error('User session not found');
+    }
 
     try {
       for await (const message of query({
         prompt,
         options: options
       })) {
-          if (message.session_id && userSession.sessionId !== message.session_id) {
-            userSession.sessionId = message.session_id;
-            await this.storage.saveUserSession(userSession);
-          }
+        if (message.session_id && userSession.sessionId !== message.session_id) {
+          userSession.sessionId = message.session_id;
+          await this.storage.saveUserSession(userSession);
+        }
         console.debug(JSON.stringify(message, null, 2));
-        
+
         // Detect tool use and tool result in message content
         const toolInfo = this.extractToolInfo(message);
         const parentToolUseId = (message as any).parent_tool_use_id || undefined;
-        
+
         await this.onClaudeResponse(chatId.toString(), message, toolInfo, parentToolUseId);
       }
     } catch (error) {
       // Don't throw error if it's caused by abort
-      console.log(error)
       if (error instanceof AbortError) {
         return;
       }
-      
+
       this.onClaudeError?.(chatId.toString(), error instanceof Error ? error.message : 'Unknown error');
       throw error;
     } finally {
-        this.abortControllers.delete(chatId);
-        
-        // Signal completion with null message to indicate completion
-        this.onClaudeResponse(chatId.toString(), null, undefined, undefined);
+      this.abortControllers.delete(chatId);
+
+      // Signal completion with null message to indicate completion
+      this.onClaudeResponse(chatId.toString(), null, undefined, undefined);
     }
 
     await this.storage.updateSessionActivity(userSession);

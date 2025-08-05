@@ -1,7 +1,6 @@
 import { createClient, RedisClientType } from 'redis';
 import { UserSessionModel } from '../models/user-session';
 import { Project } from '../models/project';
-import { createHash } from 'crypto';
 import { IStorage } from './interface';
 
 export class RedisStorage implements IStorage {
@@ -94,29 +93,7 @@ export class RedisStorage implements IStorage {
     await this.saveUserSession(userSession);
   }
 
-  // Tool use mapping methods
-  private createInputHash(input: object): string {
-    const inputStr = JSON.stringify(input, Object.keys(input).sort());
-    return createHash('sha256').update(inputStr).digest('hex').substring(0, 12);
-  }
-
-  private generateToolUseKey(toolName: string, input: object, toolUseId: string): string {
-    const inputHash = this.createInputHash(input);
-    return `tool_use:${toolName}:${inputHash}:${toolUseId}`;
-  }
-
-  async storeToolUseMapping(toolUseId: string, chatId: number, toolName: string, input: object): Promise<void> {
-    const key = this.generateToolUseKey(toolName, input, toolUseId);
-    await this.client.setEx(key, 900, chatId.toString()); // 15 minutes TTL
-  }
-
-  async getToolUseMapping(toolUseId: string, toolName: string, input: object): Promise<number | null> {
-    const key = this.generateToolUseKey(toolName, input, toolUseId);
-    const chatId = await this.client.get(key);
-    return chatId ? parseInt(chatId, 10) : null;
-  }
-
-  // New tool use storage methods for customized handling
+  // Tool use storage methods for customized handling
   private getToolUseKey(sessionId: string, toolId: string): string {
     return `${this.TOOL_USE_PREFIX}${sessionId}_${toolId}`;
   }

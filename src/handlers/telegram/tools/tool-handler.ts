@@ -32,8 +32,6 @@ export class ToolHandler {
   async handleToolUse(chatId: number, message: any, toolInfo: ToolInfo, user: UserSessionModel, parentToolUseId?: string): Promise<void> {
     const input = this.extractToolInput(message, toolInfo.toolName);
 
-    await this.storeToolUseMapping(toolInfo.toolId, chatId, toolInfo.toolName, input);
-
     // Check if this is an Edit, MultiEdit, or Write tool and workers is enabled
     if (this.config.workers.enabled && (toolInfo.toolName === TargetTool.Edit || toolInfo.toolName === TargetTool.MultiEdit || toolInfo.toolName === TargetTool.Write)) {
       await this.handleDiffToolUse(chatId, message, toolInfo, user, parentToolUseId, input);
@@ -65,9 +63,6 @@ export class ToolHandler {
     await this.updateToolResultMessage(chatId, storedTool, toolResult, user.sessionId, toolInfo.toolId, parentToolUseId);
   }
 
-  private async storeToolUseMapping(toolUseId: string, chatId: number, toolName: string, input: object): Promise<void> {
-    await this.storage.storeToolUseMapping(toolUseId, chatId, toolName, input);
-  }
 
 
   private async sendDefaultToolLoadingMessage(chatId: number, message: any, toolInfo: ToolInfo, user: UserSessionModel, parentToolUseId?: string): Promise<void> {

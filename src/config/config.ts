@@ -39,9 +39,7 @@ export interface SecurityConfig {
   secretToken?: string | undefined;
 }
 
-export interface MCPConfig {
-  port: number;
-}
+
 
 export interface Config {
   telegram: TelegramConfig;
@@ -51,7 +49,6 @@ export interface Config {
   webhook?: WebhookConfig;
   workers: WorkersConfig;
   security: SecurityConfig;
-  mcp: MCPConfig;
 }
 
 function getEnvOrDefault(key: string, defaultValue: string): string {
@@ -114,9 +111,6 @@ export function loadConfig(): Config {
       secretRequired: getEnvOrDefault('SECURITY_SECRET_REQUIRED', 'false') === 'true',
       secretToken: process.env.SECURITY_SECRET_TOKEN || undefined,
     },
-    mcp: {
-      port: parseInt(getEnvOrDefault('MCP_PORT', '3002'), 10),
-    },
   };
 
   // Add webhook config if mode is webhook
@@ -150,10 +144,7 @@ export function validateConfig(config: Config): void {
     throw new Error('Webhook mode is not supported. Only polling mode is available.');
   }
 
-  // Validate MCP config
-  if (!config.mcp.port || config.mcp.port < 1 || config.mcp.port > 65535) {
-    throw new Error('MCP_PORT must be a valid port number (1-65535)');
-  }
+
 
   // Validate security config
   if (config.security.secretRequired && !config.security.secretToken) {

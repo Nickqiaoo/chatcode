@@ -14,7 +14,7 @@
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.63",
+    "@anthropic-ai/claude-code": "^1.0.68",
     "@gramio/format": "^0.3.3",
     "@gramio/split": "^0.0.1",
     "@modelcontextprotocol/sdk": "^1.17.0",

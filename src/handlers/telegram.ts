@@ -8,6 +8,7 @@ import { MessageFormatter } from '../utils/formatter';
 import { message } from 'telegraf/filters';
 import { MessageBatcher } from '../queue/message-batcher';
 import { Config } from '../config/config';
+import { PermissionManager } from './permission-manager';
 
 // Import handlers
 import { CommandHandler } from './telegram/commands/command-handler';
@@ -26,6 +27,7 @@ export class TelegramHandler {
   private formatter: MessageFormatter;
   private messageBatcher: MessageBatcher;
   private config: Config;
+  private permissionManager: PermissionManager;
   
   // Handlers
   private commandHandler: CommandHandler;
@@ -42,7 +44,8 @@ export class TelegramHandler {
     claudeSDK: ClaudeManager,
     storage: IStorage,
     formatter: MessageFormatter,
-    config: Config
+    config: Config,
+    permissionManager: PermissionManager
   ) {
     this.bot = bot;
     this.github = github;
@@ -51,6 +54,7 @@ export class TelegramHandler {
     this.claudeSDK = claudeSDK;
     this.formatter = formatter;
     this.config = config;
+    this.permissionManager = permissionManager;
     this.messageBatcher = new MessageBatcher(
       (chatId: number, message: string) => this.claudeSDK.sendMessageBatched(chatId, message)
     );
@@ -61,7 +65,7 @@ export class TelegramHandler {
     this.messageHandler = new MessageHandler(this.storage, this.github, this.formatter, this.messageBatcher, this.projectHandler, this.bot);
     this.toolHandler = new ToolHandler(this.storage, this.formatter, this.config, this.bot, this.claudeSDK, this.messageBatcher);
     this.fileBrowserHandler = new FileBrowserHandler(this.storage, this.directory, this.formatter, this.config, this.bot);
-    this.callbackHandler = new CallbackHandler(this.formatter, this.projectHandler, this.storage, this.fileBrowserHandler, this.bot, this.config);
+    this.callbackHandler = new CallbackHandler(this.formatter, this.projectHandler, this.storage, this.fileBrowserHandler, this.bot, this.permissionManager);
 
 
     this.setupHandlers();

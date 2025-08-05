@@ -13,15 +13,15 @@
 - **会话管理**：使用 Redis 或内存存储的持久用户会话
 - **工具处理**：高级工具使用检测和管理
 - **消息批处理**：高效的消息处理和传送
-- **MCP 服务器**：用于权限控制的模型上下文协议服务器
+- **权限控制**：用于安全工具使用的高级权限系统
 - **Cloudflare Workers**：可选的 Workers 集成，用于差异和文件查看
 
 ## 为 Telegram 优化的移动体验
 
 该机器人专为 Telegram 使用场景设计和优化，通过以下几个关键创新提供出色的移动体验：
 
-### 1. **自然权限控制的 MCP**
-实现了模型上下文协议 (MCP) 服务器，提供自然的权限控制工作流。用户可以通过直观的内联键盘轻松批准或拒绝工具操作，使权限管理在移动设备上无缝进行。
+### 1. **自然权限控制**
+通过集成权限系统提供自然的权限控制工作流。用户可以通过直观的内联键盘轻松批准或拒绝工具操作，使权限管理在移动设备上无缝进行。
 
 ### 2. **编辑的可视化差异显示**
 所有代码编辑操作都显示全面的差异视图，允许用户在批准前审查更改。这种视觉反馈对于需要清楚了解代码更改内容的移动用户至关重要。
@@ -145,7 +145,6 @@ TG_BOT_TOKEN=your_telegram_bot_token  # 从 Telegram 上的 @BotFather 获取
 BOT_MODE=polling  # 使用轮询模式 - 无需公网 IP 或域名
 CLAUDE_CODE_PATH=claude
 WORK_DIR=/tmp/tg-claudecode  # GitHub 项目克隆的目录
-MCP_PORT=3002
 ```
 
 ### 可选配置
@@ -230,7 +229,7 @@ openssl rand -hex 16
 - **Claude 管理器**（`src/handlers/claude.ts`）：Claude Code SDK 集成
 - **Telegram 处理器**（`src/handlers/telegram.ts`）：Telegram 机器人逻辑协调
 - **存储层**：基于 Redis 或内存的会话存储
-- **MCP 服务器**：模型上下文协议的本地服务器
+- **权限系统**：集成的工具使用权限控制
 - **Workers 支持**：可选的 Cloudflare Workers 集成
 
 ### 消息流架构
@@ -241,19 +240,19 @@ sequenceDiagram
     participant TG as Telegram
     participant Bot as Telegram 机器人
     participant Claude as Claude Code SDK
-    participant MCP as MCP 服务器
+    participant PM as 权限管理器
     
     User->>TG: 发送消息
     TG->>Bot: 轮询/接收消息
     Bot->>Claude: 通过 SDK 处理消息
     
     alt 工具需要权限
-        Claude->>MCP: 请求权限
-        MCP->>TG: 向用户发送权限请求
+        Claude->>PM: 请求权限
+        PM->>TG: 向用户发送权限请求
         TG->>User: 显示权限对话框
         User->>TG: 批准/拒绝
-        TG->>MCP: 用户响应
-        MCP->>Claude: 返回权限结果
+        TG->>PM: 用户响应
+        PM->>Claude: 返回权限结果
     end
     
     Claude->>Bot: 返回响应
@@ -267,10 +266,10 @@ sequenceDiagram
 2. **消息接收**：机器人轮询 Telegram API 并接收消息
 3. **Claude 处理**：消息转发到 Claude Code SDK 进行处理
 4. **权限检查**：如果 Claude 需要工具使用权限：
-   - Claude Code SDK 通过 MCP 服务器请求权限
-   - MCP 服务器通过 Telegram 向用户发送权限请求
+   - Claude Code SDK 调用权限管理器的 canUseTool 函数
+   - 权限管理器通过 Telegram 向用户发送权限请求
    - 用户通过内联键盘批准或拒绝请求
-   - MCP 服务器将权限结果返回给 Claude Code SDK
+   - 权限管理器将权限结果返回给 Claude Code SDK
 5. **响应生成**：Claude 处理请求并生成响应
 6. **消息传送**：机器人通过 Telegram 将格式化响应发送回用户
 
@@ -289,7 +288,7 @@ src/
 │   ├── directory.ts # 目录管理
 │   └── telegram/    # Telegram 特定处理器
 ├── models/          # 数据模型和类型
-├── mcp/            # MCP 服务器实现
+
 ├── queue/          # 消息批处理
 ├── server/         # Express 服务器用于 webhooks
 ├── services/       # 业务逻辑服务

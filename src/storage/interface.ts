@@ -26,9 +26,6 @@ export interface IStorage {
   startClaudeSession(userSession: UserSessionModel, sessionId: string, projectPath?: string): Promise<void>;
   endClaudeSession(userSession: UserSessionModel): Promise<void>;
 
-  // Tool use mapping
-  storeToolUseMapping(toolUseId: string, chatId: number, toolName: string, input: object): Promise<void>;
-  getToolUseMapping(toolUseId: string, toolName: string, input: object): Promise<number | null>;
 
   // Tool use storage for message handling
   storeToolUse(sessionId: string, toolId: string, toolData: ToolData): Promise<void>;

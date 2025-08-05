@@ -50,10 +50,10 @@ This is a Telegram bot that integrates with Claude Code SDK, featuring a modular
    - Manages user sessions, projects, tool mappings, and session state
    - Factory pattern for storage type selection
 
-5. **MCP Server** (`src/mcp/server.ts`)
-   - Implements Model Context Protocol for permission handling
-   - Runs on separate Express instance (localhost only)
+5. **Permission System** (`src/services/permission.ts`)
+   - Implements integrated permission handling for tool usage
    - Manages approval workflow for tool use requests
+   - Provides different permission modes for various use cases
 
 ### Key Models and Types
 
@@ -79,7 +79,7 @@ Environment-based configuration with validation:
 - `CLAUDE_CODE_PATH` (required): Path to Claude Code binary
 - `WORK_DIR` (required): Working directory for projects
 - `STORAGE_TYPE`: `redis` or `memory`
-- `MCP_PORT`: Port for MCP server (default: 3002)
+
 
 Only polling mode is supported; webhook mode is disabled.
 
@@ -97,7 +97,7 @@ The `workers/` directory contains a separate Cloudflare Workers integration:
 - No test framework currently configured
 - Callback architecture prevents circular dependencies between Claude and Telegram handlers
 - Storage interface allows easy switching between Redis and memory backends
-- MCP server runs on separate port for permission approval workflow
+- Permission manager handles tool use permissions directly within the application
 
 ## important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
