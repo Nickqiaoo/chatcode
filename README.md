@@ -2,6 +2,8 @@
 
 [🇨🇳 中文文档](README-zh.md)
 
+<a href="https://www.producthunt.com/products/chatcode?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-chatcode" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1001019&theme=light&t=1754407798193" alt="ChatCode - A vibe coding telegram bot. | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+
 ## Demo Video
 
 [![Demo Video](https://img.youtube.com/vi/rhsV6_z9G9c/0.jpg)](https://www.youtube.com/watch?v=rhsV6_z9G9c)
@@ -357,3 +359,7 @@ For issues and questions:
 - Check the existing issues
 - Create a new issue with detailed information
 - Include logs and configuration (without sensitive data)
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Nickqiaoo/chatcode&type=Date)](https://www.star-history.com/#Nickqiaoo/chatcode&Date)
