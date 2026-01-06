@@ -8,6 +8,7 @@ import { MESSAGES } from '../../../constants/messages';
 import { ClaudeManager } from '../../claude';
 import { ProjectHandler } from '../project/project-handler';
 import { TelegramSender } from '../../../services/telegram-sender';
+import { KeyboardFactory } from '../keyboards/keyboard-factory';
 
 export class MessageHandler {
   private telegramSender: TelegramSender;
@@ -55,7 +56,7 @@ export class MessageHandler {
 
   async handleSessionInput(ctx: Context, user: UserSessionModel, text: string): Promise<void> {
     try {
-      await ctx.reply('Processing...');
+      await ctx.reply('Processing...', KeyboardFactory.createCompletionKeyboard());
       await this.claudeSDK.addMessageToStream(user.chatId, text);
     } catch (error) {
       await ctx.reply(this.formatter.formatError(MESSAGES.ERRORS.SEND_INPUT_FAILED(error instanceof Error ? error.message : 'Unknown error')), { parse_mode: 'MarkdownV2' });

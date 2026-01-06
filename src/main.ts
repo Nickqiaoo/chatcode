@@ -48,7 +48,7 @@ async function main(): Promise<void> {
       onClaudeError: async (userId: string, error: string) => {
         await telegramHandler.handleClaudeError(userId, error);
       }
-    });
+    }, config.claudeCode.binaryPath);
     console.log('Claude SDK manager initialized');
 
     // Create Telegram handler with callback architecture

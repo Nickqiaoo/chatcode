@@ -1,4 +1,4 @@
-import { query, type Options, AbortError, type SDKUserMessage } from '@anthropic-ai/claude-code';
+import { query, type Options, AbortError, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { IStorage } from '../storage/interface';
 import { TargetTool } from '../models/types';
 import { PermissionManager } from './permission-manager';
@@ -8,6 +8,7 @@ export class ClaudeManager {
   private storage: IStorage;
   private permissionManager: PermissionManager;
   private streamManager = new StreamManager();
+  private binaryPath: string | undefined;
   private onClaudeResponse: (userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => Promise<void>;
   private onClaudeError: (userId: string, error: string) => void;
 
@@ -17,12 +18,14 @@ export class ClaudeManager {
     callbacks: {
       onClaudeResponse: (userId: string, message: any, toolInfo?: { toolId: string; toolName: string; isToolUse: boolean; isToolResult: boolean }, parentToolUseId?: string) => Promise<void>;
       onClaudeError: (userId: string, error: string) => void;
-    }
+    },
+    binaryPath?: string
   ) {
     this.storage = storage;
     this.permissionManager = permissionManager;
     this.onClaudeResponse = callbacks.onClaudeResponse;
     this.onClaudeError = callbacks.onClaudeError;
+    this.binaryPath = binaryPath;
   }
 
   async addMessageToStream(chatId: number, prompt: string): Promise<void> {
@@ -154,8 +157,12 @@ export class ClaudeManager {
     const options: Options = {
       cwd: session.projectPath,
       ...(session.sessionId ? { resume: session.sessionId } : {}),
+      ...(this.binaryPath ? { pathToClaudeCodeExecutable: this.binaryPath } : {}),
       abortController: controller,
       permissionMode: session.permissionMode,
+      // New SDK requires explicit system prompt and settings configuration
+      systemPrompt: { type: 'preset', preset: 'claude_code' },
+      settingSources: ['user', 'project', 'local'],
       canUseTool: async (toolName: string, input: Record<string, unknown>) => {
         try {
           // Inject chatId into input for PermissionManager use

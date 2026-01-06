@@ -1,4 +1,4 @@
-import { type SDKMessage, type SDKAssistantMessage, type SDKUserMessage, type SDKResultMessage, type SDKSystemMessage } from '@anthropic-ai/claude-code';
+import { type SDKMessage, type SDKAssistantMessage, type SDKUserMessage, type SDKResultMessage, type SDKSystemMessage } from '@anthropic-ai/claude-agent-sdk';
 import { markdownv2 as format } from 'telegram-format';
 import { createPatch } from 'diff';
 import { TargetTool, PermissionMode } from '../models/types';
@@ -34,7 +34,12 @@ export class MessageFormatter {
       case 'result':
         return this.formatResultMessage(message);
       case 'system':
-        return this.formatSystemMessage(message);
+        return this.formatSystemMessage(message as SDKSystemMessage);
+      // New message types added in claude-agent-sdk
+      case 'stream_event':
+      case 'tool_progress':
+      case 'auth_status':
+        return ''; // Skip these internal SDK messages
       default:
         return this.formatGenericMessage(message);
     }

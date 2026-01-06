@@ -1,4 +1,4 @@
-import { type SDKUserMessage } from '@anthropic-ai/claude-code';
+import { type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { AsyncQueue } from './async-queue';
 
 interface StreamInfo {
