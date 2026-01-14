@@ -9,10 +9,12 @@ import { ClaudeManager } from '../../claude';
 import { AuthService } from '../../../services/auth-service';
 import { Config } from '../../../config/config';
 import { TelegramSender } from '../../../services/telegram-sender';
+import { ClaudeSessionReader } from '../../../utils/claude-session-reader';
 
 export class CommandHandler {
   private authService: AuthService;
   private telegramSender: TelegramSender;
+  private sessionReader: ClaudeSessionReader;
 
   constructor(
     private storage: IStorage,
@@ -23,6 +25,7 @@ export class CommandHandler {
   ) {
     this.authService = new AuthService(config);
     this.telegramSender = new TelegramSender(bot);
+    this.sessionReader = new ClaudeSessionReader();
   }
 
   async handleStart(ctx: Context): Promise<void> {
@@ -66,20 +69,21 @@ export class CommandHandler {
     const user = await this.storage.getUserSession(chatId);
 
     if (!user) {
-      await ctx.reply(this.formatter.formatError('No user session found. Please start with /start.'), { parse_mode: 'MarkdownV2' });
+      await ctx.reply(this.formatter.formatError('No user session found. Please auth first or /start.'), { parse_mode: 'MarkdownV2' });
       return;
     }
 
     try {
-      const projects = await this.storage.getUserProjects(chatId);
-      
-      if (projects.length === 0) {
-        await ctx.reply('📋 You have no projects yet.\n\nUse /createproject to create your first project!');
+      // Read projects from Claude Code's ~/.claude/projects/ directory
+      const claudeProjects = await this.sessionReader.listAllProjects(20);
+
+      if (claudeProjects.length === 0) {
+        await ctx.reply('📋 No Claude Code projects found.\n\nUse Claude Code CLI first to create some sessions!');
         return;
       }
 
-      const listText = `📋 Your Projects (${projects.length})\n\nSelect a project to work with:`;
-      await ctx.reply(listText, KeyboardFactory.createProjectListKeyboard(projects));
+      const listText = `📋 Claude Code Projects (${claudeProjects.length})\n\nSelect a project to work with:`;
+      await ctx.reply(listText, KeyboardFactory.createClaudeProjectListKeyboard(claudeProjects));
     } catch (error) {
       await ctx.reply(this.formatter.formatError('Failed to load projects. Please try again.'), { parse_mode: 'MarkdownV2' });
       console.error('Error loading projects:', error);
@@ -93,7 +97,7 @@ export class CommandHandler {
     const user = await this.storage.getUserSession(chatId);
 
     if (!user) {
-      await ctx.reply(this.formatter.formatError('No user session found.'), { parse_mode: 'MarkdownV2' });
+      await ctx.reply(this.formatter.formatError('No user session found. Please auth first or /start.'), { parse_mode: 'MarkdownV2' });
       return;
     }
 
@@ -206,6 +210,40 @@ export class CommandHandler {
     } catch (error) {
       await ctx.reply(this.formatter.formatError('Failed to clear session. Please try again.'), { parse_mode: 'MarkdownV2' });
       console.error('Error clearing session:', error);
+    }
+  }
+
+  async handleResume(ctx: Context): Promise<void> {
+    if (!ctx.chat) return;
+
+    const chatId = ctx.chat.id;
+    const user = await this.storage.getUserSession(chatId);
+
+    if (!user) {
+      await ctx.reply(this.formatter.formatError('No user session found. Please auth first or /start.'), { parse_mode: 'MarkdownV2' });
+      return;
+    }
+
+    // Must have an active project to resume a session
+    if (!user.activeProject || !user.projectPath) {
+      await ctx.reply(this.formatter.formatError('No active project. Please select a project first with /listproject.'), { parse_mode: 'MarkdownV2' });
+      return;
+    }
+
+    try {
+      // user.activeProject is the encoded project ID (path with / replaced by -)
+      const sessions = await this.sessionReader.listProjectSessions(user.activeProject, 10);
+
+      if (sessions.length === 0) {
+        await ctx.reply('📋 No Claude Code sessions found for this project.\n\nStart chatting to create a new session!');
+        return;
+      }
+
+      const listText = `📋 Claude Code Sessions (${sessions.length})\n\nSelect a session to resume:`;
+      await ctx.reply(listText, KeyboardFactory.createSessionListKeyboard(sessions));
+    } catch (error) {
+      await ctx.reply(this.formatter.formatError('Failed to load sessions. Please try again.'), { parse_mode: 'MarkdownV2' });
+      console.error('Error loading sessions:', error);
     }
   }
 

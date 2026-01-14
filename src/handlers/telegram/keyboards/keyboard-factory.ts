@@ -1,6 +1,7 @@
 import { Markup } from 'telegraf';
 import { MESSAGES } from '../../../constants/messages';
 import { Project } from '../../../models/project';
+import { ClaudeSession, ClaudeProject } from '../../../utils/claude-session-reader';
 
 export class KeyboardFactory {
   static createProjectTypeKeyboard(): any {
@@ -118,6 +119,78 @@ export class KeyboardFactory {
     keyboard.push([
       Markup.button.callback('🔄 Refresh', 'nav:refresh'),
       Markup.button.callback('❌ Close', 'nav:close')
+    ]);
+
+    return Markup.inlineKeyboard(keyboard);
+  }
+
+  static createClaudeProjectListKeyboard(projects: ClaudeProject[]): any {
+    const keyboard = [];
+
+    // Add project buttons (1 per row)
+    for (const project of projects) {
+      const dateStr = project.lastAccessed.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+
+      // Use last directory name from path
+      const displayName = project.name.length > 18
+        ? project.name.substring(0, 18) + '..'
+        : project.name;
+
+      // Truncate ID to fit Telegram's 64 byte limit
+      // "claude_project_" = 15 bytes, so max ID length is 49 bytes
+      const shortId = project.id.length > 45
+        ? project.id.substring(project.id.length - 45)
+        : project.id;
+
+      keyboard.push([
+        Markup.button.callback(
+          `📂 ${displayName} (${dateStr})`,
+          `claude_project_${shortId}`
+        )
+      ]);
+    }
+
+    // Add cancel button
+    keyboard.push([
+      Markup.button.callback('❌ Cancel', 'cancel')
+    ]);
+
+    return Markup.inlineKeyboard(keyboard);
+  }
+
+  static createSessionListKeyboard(sessions: ClaudeSession[]): any {
+    const keyboard = [];
+
+    // Add session buttons (1 per row due to long text)
+    for (const session of sessions) {
+      const date = new Date(session.timestamp);
+      const dateStr = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // Truncate first message for display
+      let summary = session.firstMessage || 'No message';
+      if (summary.length > 25) {
+        summary = summary.substring(0, 25) + '...';
+      }
+
+      keyboard.push([
+        Markup.button.callback(
+          `📝 ${dateStr} - ${summary}`,
+          `session_select_${session.sessionId}`
+        )
+      ]);
+    }
+
+    // Add cancel button
+    keyboard.push([
+      Markup.button.callback('❌ Cancel', 'cancel')
     ]);
 
     return Markup.inlineKeyboard(keyboard);

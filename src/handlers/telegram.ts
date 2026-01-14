@@ -108,6 +108,7 @@ export class TelegramHandler {
 
     this.bot.command('abort', (ctx) => this.commandHandler.handleAbort(ctx));
     this.bot.command('clear', (ctx) => this.commandHandler.handleClear(ctx));
+    this.bot.command('resume', (ctx) => this.commandHandler.handleResume(ctx));
 
     // Permission mode commands
     this.bot.command('default', (ctx) => this.commandHandler.handlePermissionModeChange(ctx, PermissionMode.Default));

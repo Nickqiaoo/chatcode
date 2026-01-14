@@ -21,6 +21,7 @@ Available commands:
 • /auth - Authenticate with secret (if required)
 • /abort - Abort current query
 • /clear - Clear session
+• /resume - Resume a previous Claude Code session
 
 🔧 **Permission Modes**
 • /default - Standard behavior with permission prompts
@@ -151,6 +152,7 @@ Permission mode: ${permissionMode}`,
 /auth [secret] - Authenticate with secret (if required)
 /abort - Abort current Claude query
 /clear - Clear Claude session
+/resume - Resume a previous Claude Code session
 
 🔧 **Permission Modes**
 /default - Standard behavior with permission prompts

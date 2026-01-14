@@ -39,8 +39,10 @@ export class ProjectHandler {
       await ctx.reply(confirmText);
       await ctx.reply(MESSAGES.CLONING_REPO);
 
-      const projectId = TelegramUtils.generateProjectId();
-      const localPath = await this.github.cloneRepo(repoUrl, user.chatId, projectId);
+      const tempProjectId = TelegramUtils.generateProjectId();
+      const localPath = await this.github.cloneRepo(repoUrl, user.chatId, tempProjectId);
+      // Use encoded path as project ID (same format as Claude Code)
+      const projectId = localPath.replace(/\//g, '-');
 
       const project = createProject(
         projectId,
@@ -98,7 +100,8 @@ export class ProjectHandler {
 
       await ctx.reply(confirmText);
 
-      const projectId = TelegramUtils.generateProjectId();
+      // Use encoded path as project ID (same format as Claude Code)
+      const projectId = resolvedPath.replace(/\//g, '-');
 
       const project = createProject(
         projectId,
