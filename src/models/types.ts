@@ -4,6 +4,7 @@ export enum UserState {
   WaitingRepo = 'waiting_repo',
   WaitingDirectory = 'waiting_directory',
   InSession = 'in_session',
+  WaitingASREdit = 'waiting_asr_edit',
 }
 
 export enum ProjectType {

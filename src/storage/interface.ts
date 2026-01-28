@@ -32,6 +32,11 @@ export interface IStorage {
   getToolUse(sessionId: string, toolId: string): Promise<ToolData | null>;
   deleteToolUse(sessionId: string, toolId: string): Promise<void>;
 
+  // Pending ASR text for voice message confirmation
+  storePendingASR(chatId: number, text: string): Promise<void>;
+  getPendingASR(chatId: number): Promise<string | null>;
+  deletePendingASR(chatId: number): Promise<void>;
+
   // Project management
   getUserProjects(userId: number): Promise<Project[]>;
   getProject(projectId: string, userId: number): Promise<Project | null>;

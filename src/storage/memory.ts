@@ -5,6 +5,8 @@ import { IStorage } from './interface';
 export class MemoryStorage implements IStorage {
   private userSessions: Map<number, UserSessionModel> = new Map();
   private userProjects: Map<number, Map<string, Project>> = new Map();
+  private pendingASR: Map<number, string> = new Map();
+
   private toolUseStorage: Map<string, {
     name: string;
     messageId: number;
@@ -21,6 +23,7 @@ export class MemoryStorage implements IStorage {
     this.userSessions.clear();
     this.userProjects.clear();
     this.toolUseStorage.clear();
+    this.pendingASR.clear();
     console.log('Memory storage disconnected');
   }
 
@@ -89,6 +92,21 @@ export class MemoryStorage implements IStorage {
   async deleteToolUse(sessionId: string, toolId: string): Promise<void> {
     const key = this.getToolUseKey(sessionId, toolId);
     this.toolUseStorage.delete(key);
+  }
+
+  async storePendingASR(chatId: number, text: string): Promise<void> {
+    this.pendingASR.set(chatId, text);
+    setTimeout(() => {
+      this.pendingASR.delete(chatId);
+    }, 5 * 60 * 1000);
+  }
+
+  async getPendingASR(chatId: number): Promise<string | null> {
+    return this.pendingASR.get(chatId) || null;
+  }
+
+  async deletePendingASR(chatId: number): Promise<void> {
+    this.pendingASR.delete(chatId);
   }
 
   // Project management methods

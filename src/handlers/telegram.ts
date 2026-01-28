@@ -60,7 +60,7 @@ export class TelegramHandler {
     this.messageHandler = new MessageHandler(this.storage, this.github, this.formatter, this.claudeSDK, this.projectHandler, this.bot, this.config);
     this.toolHandler = new ToolHandler(this.storage, this.formatter, this.config, this.bot, this.claudeSDK);
     this.fileBrowserHandler = new FileBrowserHandler(this.storage, this.directory, this.formatter, this.config, this.bot);
-    this.callbackHandler = new CallbackHandler(this.formatter, this.projectHandler, this.storage, this.fileBrowserHandler, this.bot, this.permissionManager);
+    this.callbackHandler = new CallbackHandler(this.formatter, this.projectHandler, this.storage, this.fileBrowserHandler, this.bot, this.permissionManager, this.claudeSDK);
 
 
     this.setupHandlers();

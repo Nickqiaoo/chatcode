@@ -13,6 +13,8 @@ export class RedisStorage implements IStorage {
   private readonly SESSION_TTL = 3 * 60 * 60; // 3 hours in seconds
   private readonly TOOL_USE_TTL = 30 * 60; // 30 minutes in seconds
   private readonly PROJECT_TTL = 15 * 24 * 60 * 60; // 15 days in seconds
+  private readonly PENDING_ASR_PREFIX = 'pending_asr:';
+  private readonly PENDING_ASR_TTL = 10 * 60; // 10 minutes
   private readonly MAX_RECONNECT_DELAY = 30000; // 30 seconds max delay
   private reconnectAttempts = 0;
 
@@ -169,6 +171,21 @@ export class RedisStorage implements IStorage {
 
   async deleteToolUse(sessionId: string, toolId: string): Promise<void> {
     const key = this.getToolUseKey(sessionId, toolId);
+    await this.client.del(key);
+  }
+
+  async storePendingASR(chatId: number, text: string): Promise<void> {
+    const key = `${this.PENDING_ASR_PREFIX}${chatId}`;
+    await this.client.setEx(key, this.PENDING_ASR_TTL, text);
+  }
+
+  async getPendingASR(chatId: number): Promise<string | null> {
+    const key = `${this.PENDING_ASR_PREFIX}${chatId}`;
+    return await this.client.get(key);
+  }
+
+  async deletePendingASR(chatId: number): Promise<void> {
+    const key = `${this.PENDING_ASR_PREFIX}${chatId}`;
     await this.client.del(key);
   }
 

@@ -44,6 +44,9 @@ export class MessageHandler {
       case UserState.WaitingDirectory:
         await this.projectHandler.handleDirectoryInput(ctx, user, text);
         break;
+      case UserState.WaitingASREdit:
+        await this.handleASREditInput(ctx, user, text);
+        break;
       case UserState.InSession:
         await this.handleSessionInput(ctx, user, text);
         break;
@@ -145,11 +148,26 @@ export class MessageHandler {
         return;
       }
 
-      await ctx.reply(`Speech recognized: ${text}`, KeyboardFactory.createCompletionKeyboard());
-      await this.claudeSDK.addMessageToStream(chatId, text);
+      await this.storage.storePendingASR(chatId, text);
+      await ctx.reply(`🎤 Speech recognized:`);
+      await ctx.reply(text, KeyboardFactory.createASRConfirmKeyboard());
     } catch (error) {
       await ctx.reply(this.formatter.formatError('Failed to process voice message. Please try again.'), { parse_mode: 'MarkdownV2' });
       console.error('Error processing voice message:', error);
+    }
+  }
+
+  async handleASREditInput(ctx: Context, user: UserSessionModel, text: string): Promise<void> {
+    try {
+      // Clear pending ASR and restore session state
+      await this.storage.deletePendingASR(user.chatId);
+      user.setState(UserState.InSession);
+      await this.storage.saveUserSession(user);
+
+      await ctx.reply('Processing...', KeyboardFactory.createCompletionKeyboard());
+      await this.claudeSDK.addMessageToStream(user.chatId, text);
+    } catch (error) {
+      await ctx.reply(this.formatter.formatError(MESSAGES.ERRORS.SEND_INPUT_FAILED(error instanceof Error ? error.message : 'Unknown error')), { parse_mode: 'MarkdownV2' });
     }
   }
 

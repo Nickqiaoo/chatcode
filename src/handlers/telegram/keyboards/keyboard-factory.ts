@@ -28,6 +28,16 @@ export class KeyboardFactory {
     ]).resize();
   }
 
+  static createASRConfirmKeyboard(): any {
+    return Markup.inlineKeyboard([
+      [
+        Markup.button.callback('❌ Cancel', 'asr_cancel'),
+        Markup.button.callback('✏️ Edit', 'asr_edit'),
+        Markup.button.callback('✅ Confirm', 'asr_confirm'),
+      ],
+    ]);
+  }
+
   static createProjectListKeyboard(projects: Project[]): any {
     const keyboard = [];
     

@@ -6,6 +6,8 @@ import { FileBrowserHandler } from '../file-browser/file-browser-handler';
 import { UserState } from '../../../models/types';
 import { PermissionManager } from '../../permission-manager';
 import { ClaudeSessionReader } from '../../../utils/claude-session-reader';
+import { ClaudeManager } from '../../claude';
+import { KeyboardFactory } from '../keyboards/keyboard-factory';
 
 export class CallbackHandler {
   private sessionReader: ClaudeSessionReader;
@@ -16,7 +18,8 @@ export class CallbackHandler {
     private storage: IStorage,
     private fileBrowserHandler: FileBrowserHandler,
     private bot: Telegraf,
-    private permissionManager: PermissionManager
+    private permissionManager: PermissionManager,
+    private claudeSDK: ClaudeManager
   ) {
     this.sessionReader = new ClaudeSessionReader();
   }
@@ -43,8 +46,44 @@ export class CallbackHandler {
       await this.handleCancelCallback(chatId, messageId);
     } else if (data?.startsWith('approve_') || data?.startsWith('deny_')) {
       await this.handleMCPApprovalCallback(data, chatId, messageId);
+    } else if (data?.startsWith('asr_')) {
+      await this.handleASRCallback(data, chatId, messageId);
     } else if (data?.startsWith('file:') || data?.startsWith('directory:') || data?.startsWith('nav:')) {
       await this.fileBrowserHandler.handleFileBrowsingCallback(data, chatId, messageId);
+    }
+  }
+
+  private async handleASRCallback(data: string, chatId: number, messageId?: number): Promise<void> {
+    try {
+      const user = await this.storage.getUserSession(chatId);
+      if (!user) return;
+
+      if (data === 'asr_confirm') {
+        const text = await this.storage.getPendingASR(chatId);
+        await this.storage.deletePendingASR(chatId);
+        if (messageId) {
+          try { await this.bot.telegram.deleteMessage(chatId, messageId); } catch {}
+        }
+        if (text) {
+          await this.bot.telegram.sendMessage(chatId, 'Processing...', KeyboardFactory.createCompletionKeyboard());
+          await this.claudeSDK.addMessageToStream(chatId, text);
+        }
+      } else if (data === 'asr_edit') {
+        user.setState(UserState.WaitingASREdit);
+        await this.storage.saveUserSession(user);
+        if (messageId) {
+          try { await this.bot.telegram.editMessageReplyMarkup(chatId, messageId, undefined, { inline_keyboard: [] }); } catch {}
+        }
+        await this.bot.telegram.sendMessage(chatId, 'Please type or paste your corrected text:');
+      } else if (data === 'asr_cancel') {
+        await this.storage.deletePendingASR(chatId);
+        if (messageId) {
+          try { await this.bot.telegram.deleteMessage(chatId, messageId); } catch {}
+        }
+        await this.bot.telegram.sendMessage(chatId, '❌ Voice message cancelled.');
+      }
+    } catch (error) {
+      console.error('Error handling ASR callback:', error);
     }
   }
 
