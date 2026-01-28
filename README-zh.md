@@ -9,6 +9,7 @@
 - **Claude Code 集成**：直接集成 Anthropic 的 Claude Code SDK
 - **项目管理**：创建、列表和管理编程项目
 - **文件浏览器**：通过 Telegram 导航和探索项目目录
+- **模型选择**：在 Claude Opus 4.5、Sonnet 4.5 和 Haiku 4.5 模型之间切换
 - **权限系统**：多种权限模式确保安全交互
 - **会话管理**：使用 Redis 或内存存储的持久用户会话
 - **工具处理**：高级工具使用检测和管理
@@ -225,6 +226,21 @@ openssl rand -hex 16
 - `/auth` - 身份验证管理
 - `/abort` - 中止当前 Claude 查询
 - `/clear` - 清除当前会话
+- `/model` - 查看和切换 Claude 模型
+
+### 模型选择
+
+针对不同用例在不同 Claude 模型之间切换：
+
+- `/model` - 显示当前模型并展示选择键盘
+- `/model opus` - 切换到 Claude Opus 4.5（最强能力，默认）
+- `/model sonnet` - 切换到 Claude Sonnet 4.5（平衡性能）
+- `/model haiku` - 切换到 Claude Haiku 4.5（最快速度）
+
+**可用模型：**
+- **Opus 4.5**（默认）：最强大的模型，适用于复杂编程任务
+- **Sonnet 4.5**：平衡性能和速度
+- **Haiku 4.5**：最快响应速度，适用于简单任务
 
 ### 权限模式
 

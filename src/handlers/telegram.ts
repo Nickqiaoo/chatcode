@@ -116,6 +116,9 @@ export class TelegramHandler {
     this.bot.command('plan', (ctx) => this.commandHandler.handlePermissionModeChange(ctx, PermissionMode.Plan));
     this.bot.command('bypass', (ctx) => this.commandHandler.handlePermissionModeChange(ctx, PermissionMode.BypassPermissions));
 
+    // Model selection command
+    this.bot.command('model', (ctx) => this.commandHandler.handleModel(ctx));
+
     // Text message handler
     this.bot.on(message('text'), (ctx) => this.messageHandler.handleTextMessage(ctx));
 

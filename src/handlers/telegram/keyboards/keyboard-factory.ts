@@ -2,6 +2,7 @@ import { Markup } from 'telegraf';
 import { MESSAGES } from '../../../constants/messages';
 import { Project } from '../../../models/project';
 import { ClaudeSession, ClaudeProject } from '../../../utils/claude-session-reader';
+import { ClaudeModel, AVAILABLE_MODELS } from '../../../models/types';
 
 export class KeyboardFactory {
   static createProjectTypeKeyboard(): any {
@@ -204,5 +205,15 @@ export class KeyboardFactory {
     ]);
 
     return Markup.inlineKeyboard(keyboard);
+  }
+
+  static createModelSelectionKeyboard(currentModel: ClaudeModel): any {
+    const buttons = AVAILABLE_MODELS.map(model => {
+      const isSelected = model.value === currentModel;
+      const label = isSelected ? `${model.displayName} ✓` : model.displayName;
+      return Markup.button.callback(label, `model_select:${model.value}`);
+    });
+
+    return Markup.inlineKeyboard([buttons, [Markup.button.callback('❌ Cancel', 'cancel')]]);
   }
 }

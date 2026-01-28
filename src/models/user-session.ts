@@ -1,4 +1,4 @@
-import { UserState, PermissionMode, FileBrowsingState } from './types';
+import { UserState, PermissionMode, FileBrowsingState, ClaudeModel, DEFAULT_MODEL } from './types';
 
 export interface UserSession {
   chatId: number;
@@ -24,6 +24,9 @@ export interface UserSession {
   
   // Security authentication
   authenticated: boolean;
+
+  // Model selection
+  currentModel: ClaudeModel;
 }
 
 export class UserSessionModel {
@@ -37,6 +40,7 @@ export class UserSessionModel {
   permissionMode: PermissionMode;
   fileBrowsingState?: FileBrowsingState;
   authenticated: boolean;
+  currentModel: ClaudeModel;
 
   constructor(chatId: number) {
     this.chatId = chatId;
@@ -47,6 +51,7 @@ export class UserSessionModel {
     this.active = false;
     this.permissionMode = PermissionMode.Default;
     this.authenticated = false;
+    this.currentModel = DEFAULT_MODEL;
   }
 
   setActive(active: boolean): void {
@@ -118,6 +123,16 @@ export class UserSessionModel {
     return this.authenticated;
   }
 
+  // Model selection methods
+  setModel(model: ClaudeModel): void {
+    this.currentModel = model;
+    this.updateActivity();
+  }
+
+  getModel(): ClaudeModel {
+    return this.currentModel;
+  }
+
   // File browsing methods
   setFileBrowsingState(state: FileBrowsingState): void {
     this.fileBrowsingState = state;
@@ -145,7 +160,8 @@ export class UserSessionModel {
       active: this.active,
       permissionMode: this.permissionMode,
       fileBrowsingState: this.fileBrowsingState,
-      authenticated: this.authenticated
+      authenticated: this.authenticated,
+      currentModel: this.currentModel
     };
   }
 
@@ -153,7 +169,7 @@ export class UserSessionModel {
     const userSession = new UserSessionModel(data.chatId);
     userSession.state = data.state;
     userSession.lastActivity = new Date(data.lastActivity);
-    
+
     userSession.activeProject = data.activeProject || '';
     if (data.sessionId) {
       userSession.sessionId = data.sessionId;
@@ -163,7 +179,8 @@ export class UserSessionModel {
     userSession.permissionMode = data.permissionMode || PermissionMode.Default;
     userSession.fileBrowsingState = data.fileBrowsingState;
     userSession.authenticated = data.authenticated || false;
-    
+    userSession.currentModel = data.currentModel || DEFAULT_MODEL;
+
     return userSession;
   }
 }

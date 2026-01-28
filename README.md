@@ -17,6 +17,7 @@ This bot allows users to interact with Claude's coding capabilities in a convers
 - **Claude Code Integration**: Direct integration with Anthropic's Claude Code SDK
 - **Project Management**: Create, list, and manage coding projects
 - **File Browser**: Navigate and explore project directories through Telegram
+- **Model Selection**: Switch between Claude Opus 4.5, Sonnet 4.5, and Haiku 4.5 models
 - **Permission System**: Multiple permission modes for secure interaction
 - **Session Management**: Persistent user sessions with Redis or memory storage
 - **Tool Handling**: Advanced tool use detection and management
@@ -233,6 +234,21 @@ openssl rand -hex 16
 - `/auth` - Authentication management
 - `/abort` - Abort current Claude query
 - `/clear` - Clear current session
+- `/model` - View and switch Claude models
+
+### Model Selection
+
+Switch between different Claude models for different use cases:
+
+- `/model` - Display current model and show selection keyboard
+- `/model opus` - Switch to Claude Opus 4.5 (most capable, default)
+- `/model sonnet` - Switch to Claude Sonnet 4.5 (balanced)
+- `/model haiku` - Switch to Claude Haiku 4.5 (fastest)
+
+**Available Models:**
+- **Opus 4.5** (default): Most capable model for complex coding tasks
+- **Sonnet 4.5**: Balanced performance and speed
+- **Haiku 4.5**: Fastest response times for simple tasks
 
 ### Permission Modes
 

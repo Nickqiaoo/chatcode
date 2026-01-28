@@ -3,14 +3,16 @@ import { IStorage } from '../../../storage/interface';
 import { MessageFormatter } from '../../../utils/formatter';
 import { ProjectHandler } from '../project/project-handler';
 import { FileBrowserHandler } from '../file-browser/file-browser-handler';
-import { UserState } from '../../../models/types';
+import { UserState, ClaudeModel, AVAILABLE_MODELS } from '../../../models/types';
 import { PermissionManager } from '../../permission-manager';
 import { ClaudeSessionReader } from '../../../utils/claude-session-reader';
 import { ClaudeManager } from '../../claude';
 import { KeyboardFactory } from '../keyboards/keyboard-factory';
+import { TelegramSender } from '../../../services/telegram-sender';
 
 export class CallbackHandler {
   private sessionReader: ClaudeSessionReader;
+  private telegramSender: TelegramSender;
 
   constructor(
     private formatter: MessageFormatter,
@@ -22,6 +24,7 @@ export class CallbackHandler {
     private claudeSDK: ClaudeManager
   ) {
     this.sessionReader = new ClaudeSessionReader();
+    this.telegramSender = new TelegramSender(bot);
   }
 
   async handleCallback(ctx: Context): Promise<void> {
@@ -50,6 +53,8 @@ export class CallbackHandler {
       await this.handleASRCallback(data, chatId, messageId);
     } else if (data?.startsWith('file:') || data?.startsWith('directory:') || data?.startsWith('nav:')) {
       await this.fileBrowserHandler.handleFileBrowsingCallback(data, chatId, messageId);
+    } else if (data?.startsWith('model_select:')) {
+      await this.handleModelSelectCallback(data, chatId, messageId);
     }
   }
 
@@ -239,10 +244,65 @@ export class CallbackHandler {
       if (messageId) {
         await this.bot.telegram.deleteMessage(chatId, messageId);
       }
-      
+
       await this.bot.telegram.sendMessage(chatId, '❌ Operation cancelled.');
     } catch (error) {
       console.error('Error handling cancel callback:', error);
+    }
+  }
+
+  private async handleModelSelectCallback(data: string, chatId: number, messageId?: number): Promise<void> {
+    try {
+      const selectedModel = data.replace('model_select:', '') as ClaudeModel;
+
+      // Validate model
+      const modelInfo = AVAILABLE_MODELS.find(m => m.value === selectedModel);
+      if (!modelInfo) {
+        await this.bot.telegram.sendMessage(chatId, this.formatter.formatError('Invalid model selected.'), { parse_mode: 'MarkdownV2' });
+        return;
+      }
+
+      const user = await this.storage.getUserSession(chatId);
+      if (!user) {
+        await this.bot.telegram.sendMessage(chatId, this.formatter.formatError('No user session found.'), { parse_mode: 'MarkdownV2' });
+        return;
+      }
+
+      // Check if same model is selected
+      if (user.currentModel === selectedModel) {
+        if (messageId) {
+          try { await this.bot.telegram.deleteMessage(chatId, messageId); } catch {}
+        }
+        await this.bot.telegram.sendMessage(chatId, `ℹ️ Already using **${modelInfo.displayName}**`, { parse_mode: 'Markdown' });
+        return;
+      }
+
+      // Check if Claude is currently running and abort if needed
+      let abortMessage = '';
+      if (this.claudeSDK.isQueryRunning(chatId)) {
+        const abortSuccess = await this.claudeSDK.abortQuery(chatId);
+        if (abortSuccess) {
+          abortMessage = '🛑 Current query has been stopped.\n';
+        }
+      }
+
+      // Update model without clearing session
+      user.setModel(selectedModel);
+      await this.storage.saveUserSession(user);
+
+      // Delete the selection message
+      if (messageId) {
+        try { await this.bot.telegram.deleteMessage(chatId, messageId); } catch {}
+      }
+
+      const finalMessage = abortMessage
+        ? `${abortMessage}✅ Model switched to **${modelInfo.displayName}**\n🔄 Continue your conversation with the new model.`
+        : `✅ Model switched to **${modelInfo.displayName}**`;
+
+      await this.telegramSender.safeSendMessage(chatId, finalMessage);
+    } catch (error) {
+      console.error('Error handling model select callback:', error);
+      await this.bot.telegram.sendMessage(chatId, this.formatter.formatError('Failed to change model. Please try again.'), { parse_mode: 'MarkdownV2' });
     }
   }
 }

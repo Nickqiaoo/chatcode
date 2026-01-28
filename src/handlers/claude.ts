@@ -193,6 +193,7 @@ export class ClaudeManager {
     
     const options: Options = {
       cwd: session.projectPath,
+      model: session.currentModel,
       ...(session.sessionId ? { resume: session.sessionId } : {}),
       ...(this.binaryPath ? { pathToClaudeCodeExecutable: this.binaryPath } : {}),
       abortController: controller,

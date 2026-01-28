@@ -1,6 +1,6 @@
 import { Context } from 'telegraf';
 import { UserSessionModel } from '../../../models/user-session';
-import { UserState, PermissionMode } from '../../../models/types';
+import { UserState, PermissionMode, ClaudeModel, AVAILABLE_MODELS } from '../../../models/types';
 import { IStorage } from '../../../storage/interface';
 import { MessageFormatter } from '../../../utils/formatter';
 import { MESSAGES } from '../../../constants/messages';
@@ -358,6 +358,84 @@ export class CommandHandler {
     } catch (error) {
       await ctx.reply(this.formatter.formatError('Failed to change permission mode. Please try again.'), { parse_mode: 'MarkdownV2' });
       console.error('Error changing permission mode:', error);
+    }
+  }
+
+  async handleModel(ctx: Context): Promise<void> {
+    if (!ctx.chat) return;
+
+    const chatId = ctx.chat.id;
+    const user = await this.storage.getUserSession(chatId);
+
+    if (!user) {
+      await ctx.reply(this.formatter.formatError('No user session found. Please /start first.'), { parse_mode: 'MarkdownV2' });
+      return;
+    }
+
+    // Check if a model argument was provided
+    const messageText = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
+    const modelArg = messageText.replace('/model', '').trim().toLowerCase();
+
+    if (modelArg) {
+      // Try to find matching model
+      const matchedModel = AVAILABLE_MODELS.find(
+        m => m.displayName.toLowerCase().includes(modelArg) ||
+             m.value.toLowerCase().includes(modelArg)
+      );
+
+      if (matchedModel) {
+        await this.handleModelChange(ctx, matchedModel.value);
+        return;
+      } else {
+        await ctx.reply(this.formatter.formatError(`Unknown model: "${modelArg}". Use /model to see available options.`), { parse_mode: 'MarkdownV2' });
+        return;
+      }
+    }
+
+    // Show current model and selection keyboard
+    const currentModel = AVAILABLE_MODELS.find(m => m.value === user.currentModel);
+    const currentModelName = currentModel?.displayName || user.currentModel;
+
+    const text = `🤖 Current model: **${currentModelName}**\n\nSelect a model:`;
+    await this.telegramSender.safeSendMessage(chatId, text, KeyboardFactory.createModelSelectionKeyboard(user.currentModel));
+  }
+
+  async handleModelChange(ctx: Context, model: ClaudeModel): Promise<void> {
+    if (!ctx.chat) return;
+
+    const chatId = ctx.chat.id;
+    const user = await this.storage.getUserSession(chatId);
+
+    if (!user) {
+      await ctx.reply(this.formatter.formatError('No user session found.'), { parse_mode: 'MarkdownV2' });
+      return;
+    }
+
+    try {
+      // Check if Claude is currently running and abort if needed
+      let abortMessage = '';
+      if (this.claudeSDK.isQueryRunning(chatId)) {
+        const abortSuccess = await this.claudeSDK.abortQuery(chatId);
+        if (abortSuccess) {
+          abortMessage = '🛑 Current query has been stopped.\n';
+        }
+      }
+
+      // Update model without clearing session
+      user.setModel(model);
+      await this.storage.saveUserSession(user);
+
+      const modelInfo = AVAILABLE_MODELS.find(m => m.value === model);
+      const modelName = modelInfo?.displayName || model;
+
+      const finalMessage = abortMessage
+        ? `${abortMessage}✅ Model switched to **${modelName}**\n🔄 Continue your conversation with the new model.`
+        : `✅ Model switched to **${modelName}**`;
+
+      await this.telegramSender.safeSendMessage(chatId, finalMessage);
+    } catch (error) {
+      await ctx.reply(this.formatter.formatError('Failed to change model. Please try again.'), { parse_mode: 'MarkdownV2' });
+      console.error('Error changing model:', error);
     }
   }
 

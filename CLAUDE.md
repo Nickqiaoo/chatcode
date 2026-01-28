@@ -57,16 +57,17 @@ This is a Telegram bot that integrates with Claude Code SDK, featuring a modular
 
 ### Key Models and Types
 
-- **UserSessionModel**: Manages user state, active projects, and Claude session data
+- **UserSessionModel**: Manages user state, active projects, Claude session data, and model selection
 - **Project**: Represents GitHub repos or local directories
 - **PermissionMode**: Controls tool use permissions (`default`, `acceptEdits`, `plan`, `bypassPermissions`)
+- **ClaudeModel**: Available Claude models (`claude-opus-4-5-20251101`, `claude-sonnet-4-5-20250929`, `claude-haiku-4-5-20251001`)
 - **TargetTool**: Enum of Claude Code tools that can be intercepted
 
 ### Telegram Handler Delegation
 
 The TelegramHandler delegates to specialized handlers:
-- **CommandHandler**: Bot commands (`/start`, `/createproject`, etc.)
-- **CallbackHandler**: Inline keyboard interactions
+- **CommandHandler**: Bot commands (`/start`, `/createproject`, `/model`, etc.)
+- **CallbackHandler**: Inline keyboard interactions (project selection, model selection, etc.)
 - **MessageHandler**: Text, photo, and voice message processing
 - **ToolHandler**: Claude tool use approval/rejection
 - **FileBrowserHandler**: Directory navigation interface
@@ -86,6 +87,15 @@ Environment-based configuration with validation:
 - `ASR_ENDPOINT`: ASR service URL (default: `http://localhost:8600`)
 
 Only polling mode is supported; webhook mode is disabled.
+
+### Model Selection
+
+Users can switch between different Claude models during their session:
+- **Opus 4.5** (default): Most capable model for complex tasks
+- **Sonnet 4.5**: Balanced performance and speed
+- **Haiku 4.5**: Fastest model for simple tasks
+
+Use `/model` command to view and switch models. The new model will be used for subsequent messages while preserving conversation history.
 
 ### Multimodal Input
 

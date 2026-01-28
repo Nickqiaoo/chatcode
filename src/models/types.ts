@@ -88,3 +88,23 @@ export interface FileBrowsingState {
   items: DirectoryItem[];
   messageId?: number;
 }
+
+// Claude model types
+export type ClaudeModel =
+  | 'claude-sonnet-4-5-20250929'
+  | 'claude-opus-4-5-20251101'
+  | 'claude-haiku-4-5-20251001';
+
+export interface ModelInfo {
+  value: ClaudeModel;
+  displayName: string;
+  description: string;
+}
+
+export const AVAILABLE_MODELS: ModelInfo[] = [
+  { value: 'claude-sonnet-4-5-20250929', displayName: 'Sonnet 4.5', description: 'Balanced' },
+  { value: 'claude-opus-4-5-20251101', displayName: 'Opus 4.5', description: 'Most capable' },
+  { value: 'claude-haiku-4-5-20251001', displayName: 'Haiku 4.5', description: 'Fastest' },
+];
+
+export const DEFAULT_MODEL: ClaudeModel = 'claude-opus-4-5-20251101';
