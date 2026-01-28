@@ -8,7 +8,7 @@ from funasr import AutoModel
 app = FastAPI(title="Fun-ASR Service")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-REMOTE_CODE = str(SCRIPT_DIR / "Fun-ASR" / "model.py")
+REMOTE_CODE = str(SCRIPT_DIR / "model.py")
 MODEL_DIR = os.environ.get("ASR_MODEL_DIR", "FunAudioLLM/Fun-ASR-Nano-2512")
 DEVICE = os.environ.get("ASR_DEVICE", "cpu")
 
