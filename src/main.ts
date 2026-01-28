@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Telegraf } from 'telegraf';
 import { loadConfig, validateConfig } from './config/config';
 import { StorageFactory } from './storage/factory';
@@ -86,6 +87,20 @@ async function main(): Promise<void> {
       // Use polling mode (default)
       await bot.launch();
       console.log('Telegram bot is running in polling mode');
+    }
+
+    // Check ASR service availability
+    if (config.asr.enabled) {
+      try {
+        const asrHealth = await fetch(`${config.asr.endpoint}/health`);
+        if (asrHealth.ok) {
+          console.log(`ASR service is available at ${config.asr.endpoint}`);
+        } else {
+          console.warn(`ASR service returned status ${asrHealth.status}. Voice messages may not work.`);
+        }
+      } catch {
+        console.warn(`ASR service is not reachable at ${config.asr.endpoint}. Start it with: pnpm run asr`);
+      }
     }
 
     // Handle graceful shutdown (register after successful startup)

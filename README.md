@@ -22,6 +22,9 @@ This bot allows users to interact with Claude's coding capabilities in a convers
 - **Tool Handling**: Advanced tool use detection and management
 - **Message Batching**: Efficient message processing and delivery
 - **Permission Control**: Advanced permission system for secure tool usage
+- **Photo Input**: Send images to Claude for visual analysis
+- **Voice Input**: Send voice messages, auto-transcribed via ASR and forwarded to Claude
+- **User Whitelist**: Bypass authentication for trusted Telegram user IDs
 - **Cloudflare Workers**: Optional Workers integration for diff and file view
 
 ## Mobile-Optimized Experience for Telegram
@@ -167,6 +170,13 @@ SESSION_TIMEOUT=7d
 SECURITY_SECRET_REQUIRED=false
 SECURITY_SECRET_TOKEN=your_secret_token
 
+# ASR (optional, for voice message support)
+ASR_ENABLED=false
+ASR_ENDPOINT=http://localhost:8600
+
+# User whitelist (bypass authentication)
+SECURITY_WHITELIST=123456789,987654321
+
 # Workers (optional)
 WORKERS_ENABLED=false
 WORKERS_ENDPOINT=your_workers_endpoint
@@ -186,12 +196,23 @@ SECURITY_SECRET_REQUIRED=true
 SECURITY_SECRET_TOKEN=your_secret_password_here
 ```
 
+### User Whitelist
+
+You can whitelist specific Telegram user IDs to bypass authentication entirely:
+
+```env
+SECURITY_WHITELIST=123456789,987654321
+```
+
+To find your Telegram user ID, message [@userinfobot](https://t.me/userinfobot) on Telegram.
+
 ### Usage
 
 When authentication is enabled:
 1. New users must send the secret token to the bot before they can use it
 2. Use `/auth` command to check authentication status. send `/auth token`
 3. Authenticated users stay logged in until the session expires
+4. Whitelisted users skip authentication entirely
 
 Generate a secure token:
 ```bash
@@ -220,7 +241,29 @@ openssl rand -hex 16
 - `/plan` - Planning mode (read-only)
 - `/bypass` - Bypass all permission checks
 
-### Interaction
+### Multimodal Input
+
+- **Photos**: Send an image (with optional caption) and Claude will analyze it visually
+- **Voice**: Send a voice message and it will be transcribed to text via ASR, then sent to Claude (requires `ASR_ENABLED=true` and a running ASR service)
+
+### ASR Service (Optional)
+
+To enable voice message support, deploy the bundled ASR service:
+
+```bash
+cd asr-service
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install transformers tiktoken
+# ffmpeg is also required: brew install ffmpeg (macOS) / sudo apt install ffmpeg (Linux)
+uvicorn server:app --host 0.0.0.0 --port 8600
+```
+
+The first startup downloads the ~2GB Fun-ASR-Nano model. After that, set `ASR_ENABLED=true` in your `.env`.
+
+### Text Interaction
 
 Simply send text messages to the bot to interact with Claude Code. The bot will:
 
@@ -303,6 +346,7 @@ src/
 ├── storage/        # Storage abstraction layer
 └── utils/          # Utility functions
 
+asr-service/        # Fun-ASR speech recognition service
 workers/            # Cloudflare Workers integration
 ```
 

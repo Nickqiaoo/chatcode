@@ -57,7 +57,7 @@ export class TelegramHandler {
     // Initialize handlers
     this.commandHandler = new CommandHandler(this.storage, this.formatter, this.claudeSDK, this.config, this.bot);
     this.projectHandler = new ProjectHandler(this.storage, this.github, this.directory, this.formatter, this.bot);
-    this.messageHandler = new MessageHandler(this.storage, this.github, this.formatter, this.claudeSDK, this.projectHandler, this.bot);
+    this.messageHandler = new MessageHandler(this.storage, this.github, this.formatter, this.claudeSDK, this.projectHandler, this.bot, this.config);
     this.toolHandler = new ToolHandler(this.storage, this.formatter, this.config, this.bot, this.claudeSDK);
     this.fileBrowserHandler = new FileBrowserHandler(this.storage, this.directory, this.formatter, this.config, this.bot);
     this.callbackHandler = new CallbackHandler(this.formatter, this.projectHandler, this.storage, this.fileBrowserHandler, this.bot, this.permissionManager);
@@ -118,6 +118,12 @@ export class TelegramHandler {
 
     // Text message handler
     this.bot.on(message('text'), (ctx) => this.messageHandler.handleTextMessage(ctx));
+
+    // Photo message handler
+    this.bot.on(message('photo'), (ctx) => this.messageHandler.handlePhotoMessage(ctx));
+
+    // Voice message handler
+    this.bot.on(message('voice'), (ctx) => this.messageHandler.handleVoiceMessage(ctx));
 
     this.bot.on('callback_query', (ctx) => this.callbackHandler.handleCallback(ctx));
   }

@@ -72,3 +72,6 @@ tg-claudecode-bot
 
 # Wrangler config (contains sensitive IDs)
 workers/wrangler.toml
+
+test
+__pycache__

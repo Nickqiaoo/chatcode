@@ -14,6 +14,9 @@
 - **工具处理**：高级工具使用检测和管理
 - **消息批处理**：高效的消息处理和传送
 - **权限控制**：用于安全工具使用的高级权限系统
+- **图片输入**：发送图片给 Claude 进行视觉分析
+- **语音输入**：发送语音消息，通过 ASR 自动转写为文本后发送给 Claude
+- **用户白名单**：为可信的 Telegram 用户 ID 免除身份验证
 - **Cloudflare Workers**：可选的 Workers 集成，用于差异和文件查看
 
 ## 为 Telegram 优化的移动体验
@@ -159,6 +162,13 @@ SESSION_TIMEOUT=7d
 SECURITY_SECRET_REQUIRED=false
 SECURITY_SECRET_TOKEN=your_secret_token
 
+# ASR（可选，用于语音消息支持）
+ASR_ENABLED=false
+ASR_ENDPOINT=http://localhost:8600
+
+# 用户白名单（免除身份验证）
+SECURITY_WHITELIST=123456789,987654321
+
 # Workers（可选）
 WORKERS_ENABLED=false
 WORKERS_ENDPOINT=your_workers_endpoint
@@ -178,12 +188,23 @@ SECURITY_SECRET_REQUIRED=true
 SECURITY_SECRET_TOKEN=your_secret_password_here
 ```
 
+### 用户白名单
+
+可以将特定 Telegram 用户 ID 加入白名单，免除身份验证：
+
+```env
+SECURITY_WHITELIST=123456789,987654321
+```
+
+要获取您的 Telegram 用户 ID，请在 Telegram 上向 [@userinfobot](https://t.me/userinfobot) 发送消息。
+
 ### 使用方法
 
 启用身份验证时：
 1. 新用户必须向机器人发送密钥令牌才能使用它
 2. 使用 `/auth` 命令检查身份验证状态。发送 `/auth token`
 3. 已验证用户保持登录状态直到会话过期
+4. 白名单用户完全跳过身份验证
 
 生成安全令牌：
 ```bash
@@ -212,7 +233,29 @@ openssl rand -hex 16
 - `/plan` - 规划模式（只读）
 - `/bypass` - 绕过所有权限检查
 
-### 交互
+### 多模态输入
+
+- **图片**：发送图片（可附带说明文字），Claude 将进行视觉分析
+- **语音**：发送语音消息，系统会通过 ASR 服务转写为文本后发送给 Claude（需要 `ASR_ENABLED=true` 并运行 ASR 服务）
+
+### ASR 服务（可选）
+
+要启用语音消息支持，请部署内置的 ASR 服务：
+
+```bash
+cd asr-service
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install transformers tiktoken
+# 还需要安装 ffmpeg：brew install ffmpeg (macOS) / sudo apt install ffmpeg (Linux)
+uvicorn server:app --host 0.0.0.0 --port 8600
+```
+
+首次启动会下载约 2GB 的 Fun-ASR-Nano 模型。之后在 `.env` 中设置 `ASR_ENABLED=true`。
+
+### 文本交互
 
 只需向机器人发送文本消息即可与 Claude Code 交互。机器人将：
 
@@ -295,6 +338,7 @@ src/
 ├── storage/        # 存储抽象层
 └── utils/          # 实用函数
 
+asr-service/        # Fun-ASR 语音识别服务
 workers/            # Cloudflare Workers 集成
 ```
 

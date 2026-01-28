@@ -26,9 +26,19 @@ export class AuthService {
    */
   isUserAuthenticated(user: UserSessionModel): boolean {
     if (!this.isSecretRequired()) {
-      return true; // No authentication required
+      return true;
+    }
+    if (this.isWhitelisted(user.chatId)) {
+      return true;
     }
     return user.isAuthenticated();
+  }
+
+  /**
+   * Check if a user ID is in the whitelist
+   */
+  isWhitelisted(userId: number): boolean {
+    return this.config.security.whitelistedUserIds.includes(userId);
   }
 
   /**

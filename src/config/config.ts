@@ -1,6 +1,20 @@
 import { config } from 'dotenv';
+import * as path from 'path';
+import * as os from 'os';
+import * as fs from 'fs';
 
-config();
+// Load config from multiple locations (later ones override earlier)
+const configPaths = [
+  path.join(os.homedir(), '.config', 'tgcc', '.env'),  // ~/.config/tgcc/.env
+  path.join(os.homedir(), '.tgcc.env'),                 // ~/.tgcc.env
+  path.join(process.cwd(), '.env'),                     // current directory
+];
+
+for (const configPath of configPaths) {
+  if (fs.existsSync(configPath)) {
+    config({ path: configPath, override: true });
+  }
+}
 
 export interface TelegramConfig {
   botToken: string;
@@ -34,9 +48,15 @@ export interface WorkersConfig {
   apiKey?: string | undefined;
 }
 
+export interface AsrConfig {
+  enabled: boolean;
+  endpoint: string;
+}
+
 export interface SecurityConfig {
   secretRequired: boolean;
   secretToken?: string | undefined;
+  whitelistedUserIds: number[];
 }
 
 
@@ -48,6 +68,7 @@ export interface Config {
   storage: StorageConfig;
   webhook?: WebhookConfig;
   workers: WorkersConfig;
+  asr: AsrConfig;
   security: SecurityConfig;
 }
 
@@ -107,9 +128,16 @@ export function loadConfig(): Config {
       endpoint: process.env.WORKERS_ENDPOINT || undefined,
       apiKey: process.env.WORKERS_API_KEY || undefined,
     },
+    asr: {
+      enabled: getEnvOrDefault('ASR_ENABLED', 'false') === 'true',
+      endpoint: getEnvOrDefault('ASR_ENDPOINT', 'http://localhost:8600'),
+    },
     security: {
       secretRequired: getEnvOrDefault('SECURITY_SECRET_REQUIRED', 'false') === 'true',
       secretToken: process.env.SECURITY_SECRET_TOKEN || undefined,
+      whitelistedUserIds: process.env.SECURITY_WHITELIST
+        ? process.env.SECURITY_WHITELIST.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id))
+        : [],
     },
   };
 

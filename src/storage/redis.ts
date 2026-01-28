@@ -6,41 +6,72 @@ import { IStorage } from './interface';
 export class RedisStorage implements IStorage {
   private client: RedisClientType;
   private connected: boolean = false;
+  private readonly redisUrl: string;
   private readonly USER_SESSION_PREFIX = 'user_session:';
   private readonly USER_PROJECTS_PREFIX = 'user_projects:';
   private readonly TOOL_USE_PREFIX = 'tool_use:';
   private readonly SESSION_TTL = 3 * 60 * 60; // 3 hours in seconds
   private readonly TOOL_USE_TTL = 30 * 60; // 30 minutes in seconds
   private readonly PROJECT_TTL = 15 * 24 * 60 * 60; // 15 days in seconds
+  private readonly MAX_RECONNECT_DELAY = 30000; // 30 seconds max delay
+  private reconnectAttempts = 0;
 
   constructor(redisUrl?: string, sessionTimeout: number = 30 * 60 * 1000) {
-    this.client = createClient({
-      url: redisUrl || process.env.REDIS_URL || 'redis://localhost:6379'
-    });
-
-    this.client.on('error', (err) => {
-      console.error('Redis Client Error:', err);
-    });
-
-    this.client.on('connect', () => {
-      console.log('Connected to Redis');
-      this.connected = true;
-    });
-
-    this.client.on('disconnect', () => {
-      console.log('Disconnected from Redis');
-      this.connected = false;
-    });
+    this.redisUrl = redisUrl || process.env.REDIS_URL || 'redis://localhost:6379';
+    this.client = this.createClient();
     this.SESSION_TTL = sessionTimeout / 1000; // Convert milliseconds to seconds
   }
 
+  private createClient(): RedisClientType {
+    const client = createClient({
+      url: this.redisUrl,
+      socket: {
+        reconnectStrategy: (retries) => {
+          // Exponential backoff with max delay
+          const delay = Math.min(Math.pow(2, retries) * 100, this.MAX_RECONNECT_DELAY);
+          console.log(`Redis reconnecting in ${delay}ms (attempt ${retries + 1})`);
+          return delay;
+        }
+      }
+    });
+
+    client.on('error', (err) => {
+      // Only log non-socket-closed errors to reduce noise during reconnection
+      if (err.message !== 'Socket closed unexpectedly') {
+        console.error('Redis Client Error:', err);
+      }
+    });
+
+    client.on('connect', () => {
+      console.log('Connected to Redis');
+      this.connected = true;
+      this.reconnectAttempts = 0;
+    });
+
+    client.on('ready', () => {
+      console.log('Redis client ready');
+    });
+
+    client.on('end', () => {
+      console.log('Redis connection ended');
+      this.connected = false;
+    });
+
+    client.on('reconnecting', () => {
+      this.reconnectAttempts++;
+      console.log(`Redis reconnecting (attempt ${this.reconnectAttempts})`);
+    });
+
+    return client as RedisClientType;
+  }
+
   async initialize() {
-    this.client.connect();
+    await this.client.connect();
   }
 
   async disconnect(): Promise<void> {
     if (this.connected) {
-      await this.client.disconnect();
+      await this.client.quit();
     }
   }
 

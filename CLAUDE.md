@@ -67,7 +67,7 @@ This is a Telegram bot that integrates with Claude Code SDK, featuring a modular
 The TelegramHandler delegates to specialized handlers:
 - **CommandHandler**: Bot commands (`/start`, `/createproject`, etc.)
 - **CallbackHandler**: Inline keyboard interactions
-- **MessageHandler**: Regular text message processing
+- **MessageHandler**: Text, photo, and voice message processing
 - **ToolHandler**: Claude tool use approval/rejection
 - **FileBrowserHandler**: Directory navigation interface
 - **ProjectHandler**: Project creation and management
@@ -79,9 +79,26 @@ Environment-based configuration with validation:
 - `CLAUDE_CODE_PATH` (required): Path to Claude Code binary
 - `WORK_DIR` (required): Working directory for projects
 - `STORAGE_TYPE`: `redis` or `memory`
-
+- `SECURITY_SECRET_REQUIRED`: Enable secret-based authentication (`true`/`false`)
+- `SECURITY_SECRET_TOKEN`: Secret token for authentication
+- `SECURITY_WHITELIST`: Comma-separated Telegram user IDs that bypass authentication
+- `ASR_ENABLED`: Enable voice message support via ASR service (`true`/`false`)
+- `ASR_ENDPOINT`: ASR service URL (default: `http://localhost:8600`)
 
 Only polling mode is supported; webhook mode is disabled.
+
+### Multimodal Input
+
+- **Photo messages**: Images are downloaded from Telegram, converted to base64, and sent to Claude as image content blocks. Supports optional captions.
+- **Voice messages**: Audio is downloaded from Telegram, sent to an external ASR service (Fun-ASR) for speech-to-text, then the transcribed text is forwarded to Claude. Requires `ASR_ENABLED=true`.
+
+### ASR Service (`asr-service/`)
+
+A standalone FastAPI service wrapping the Fun-ASR-Nano-2512 speech recognition model:
+- `POST /asr`: Transcribe audio file to text (accepts `file`, `language`, `hotwords`, `itn` params)
+- `GET /health`: Health check
+- Setup: `cd asr-service && source venv/bin/activate && uvicorn server:app --host 0.0.0.0 --port 8600`
+- Requires Python venv with `funasr`, `torch`, `tiktoken`, `transformers`, and `ffmpeg` installed on the system
 
 ### Optional Cloudflare Workers
 

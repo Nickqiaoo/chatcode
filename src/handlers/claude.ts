@@ -59,6 +59,43 @@ export class ClaudeManager {
     this.streamManager.addMessage(chatId, userMessage);
   }
 
+  async addImageMessageToStream(chatId: number, base64Data: string, mediaType: string, caption?: string): Promise<void> {
+    const session = await this.storage.getUserSession(chatId);
+    if (!session) {
+      console.error(`[ClaudeManager] No session found for chatId: ${chatId}`);
+      return;
+    }
+
+    const content: Array<Record<string, unknown>> = [];
+    if (caption) {
+      content.push({ type: 'text', text: caption });
+    }
+    content.push({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: mediaType,
+        data: base64Data
+      }
+    });
+
+    const userMessage: SDKUserMessage = {
+      type: 'user',
+      message: {
+        role: 'user',
+        content: content as any
+      },
+      parent_tool_use_id: null,
+      session_id: ''
+    };
+
+    if (!this.streamManager.isStreamActive(chatId)) {
+      await this.startNewQuery(chatId, session);
+    }
+
+    this.streamManager.addMessage(chatId, userMessage);
+  }
+
   async sendMessage(chatId: number, prompt: AsyncIterable<SDKUserMessage>, options: Options): Promise<void> {
     const userSession = await this.storage.getUserSession(chatId);
     if (!userSession) {

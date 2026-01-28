@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Telegram bot for Claude Code integration",
   "main": "dist/main.js",
+  "bin": {
+    "tgcc": "./dist/main.js"
+  },
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "tsc",
@@ -11,7 +14,8 @@
     "watch": "tsc --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "asr": "cd asr-service && . venv/bin/activate && uvicorn server:app --host 0.0.0.0 --port 8600"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
